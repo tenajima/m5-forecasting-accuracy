@@ -4,7 +4,6 @@ import pandas as pd
 
 
 class ReadAndTransformData(gokart.TaskOnKart):
-
     def run(self):
         train = pd.read_csv(
             "../input/m5-forecasting-accuracy/sales_train_validation.csv"
@@ -21,11 +20,13 @@ class ReadAndTransformData(gokart.TaskOnKart):
         )
 
         # calendarのdate情報を付与
-        calendar = pd.read_csv('../input/m5-forecasting-accuracy/calendar.csv', usecols=['d', 'date'])
-        dataset = dataset.merge(calendar, on='d', how='left')
+        calendar = pd.read_csv(
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d", "date"]
+        )
+        dataset = dataset.merge(calendar, on="d", how="left")
 
         # dateカラムをdatetime型にしてソートする
-        dataset['date'] = pd.to_datetime(dataset['date'])
-        dataset = dataset.sort_values('date').reset_index(drop=True)
+        dataset["date"] = pd.to_datetime(dataset["date"])
+        dataset = dataset.sort_values("date").reset_index(drop=True)
 
         self.dump(dataset)

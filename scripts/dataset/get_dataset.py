@@ -1,13 +1,13 @@
-from scripts.fold import GetFold
-from scripts.dataset.read_data import ReadAndTransformData
-import gokart
-import luigi
+from dataclasses import dataclass
 from datetime import timedelta
 
+import gokart
+import luigi
 import pandas as pd
-from nyaggle.validation import Nth, TimeSeriesSplit
+from nyaggle.validation import Nth
 
-from dataclasses import dataclass
+from scripts.dataset.read_data import ReadAndTransformData
+from scripts.fold import GetFold
 
 
 @dataclass
@@ -44,4 +44,3 @@ class GetDatasetOfFold(gokart.TaskOnKart):
         dataset = DataSet(history, train, valid)
 
         self.dump(dataset)
-
