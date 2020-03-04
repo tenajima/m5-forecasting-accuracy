@@ -1,3 +1,4 @@
+from scripts.fold import GetFold
 from scripts.dataset.read_data import ReadAndTransformData
 import gokart
 import luigi
@@ -20,20 +21,15 @@ class GetDatasetOfFold(gokart.TaskOnKart):
     fold_num = luigi.IntParameter()
 
     def requires(self):
-        return ReadAndTransformData()
+        return {"data": ReadAndTransformData(), "fold": GetFold()}
 
     def output(self):
         return self.make_target("./dataset/dataset_fold.pkl")
 
     def run(self):
-        data = self.load()
+        data = self.load("data")
 
-        times = [
-            (("2012-04-25", "2013-04-25"), ("2013-04-25", "2013-06-30")),
-            (("2013-04-25", "2014-04-25"), ("2014-04-25", "2014-06-30")),
-            (("2014-04-25", "2015-04-25"), ("2015-04-25", "2015-06-30")),
-        ]
-        fold = Nth(self.fold_num, TimeSeriesSplit("date", times))
+        fold = Nth(self.fold_num, self.load("fold"))
         train_index, valid_index = next(fold.split(data))
 
         train = data.iloc[train_index]
