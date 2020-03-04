@@ -1,1 +1,1 @@
-from scripts.fold.get_fold import GetFold
+from scripts.fold.get_fold import GetFold  # noqa
