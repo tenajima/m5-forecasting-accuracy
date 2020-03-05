@@ -28,4 +28,6 @@ class ReadAndTransformData(gokart.TaskOnKart):
         dataset["date"] = pd.to_datetime(dataset["date"])
         dataset = dataset.sort_values("date").reset_index(drop=True)
 
+        dataset = dataset.convert_dtypes()
+
         self.dump(dataset)
