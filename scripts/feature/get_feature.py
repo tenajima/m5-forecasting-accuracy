@@ -1,4 +1,5 @@
 import inspect
+from dataclasses import dataclass
 from typing import Dict, List
 
 import category_encoders as ce
@@ -7,12 +8,9 @@ import luigi
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import dask.dataframe as dd
 
-from scripts.utils import reduce_mem_usage
 from scripts.dataset.get_dataset import DataSet, GetDatasetOfFold
-
-from dataclasses import dataclass
+from scripts.utils import reduce_mem_usage
 
 
 @dataclass
@@ -48,7 +46,7 @@ class FeatureFactory:
         return tasks
 
 
-class GetFeature(gokart.TaskOnKart):
+class GetFoldFeature(gokart.TaskOnKart):
     """ 特徴作成のための基底クラス """
 
     fold_num = luigi.IntParameter()
@@ -62,6 +60,7 @@ class GetFeature(gokart.TaskOnKart):
                 tqdm,
                 DataForTrain,
                 FeatureFactory,
+                GetFoldFeature,
                 GetFeature,
                 Feature,
             ]:
@@ -91,6 +90,15 @@ class GetFeature(gokart.TaskOnKart):
             data.test = data.test.join(feature.test)
 
         self.dump(data)
+
+
+class GetFeature(luigi.WrapperTask):
+    def requires(self):
+        return [
+            GetFoldFeature(fold_num=1),
+            GetFoldFeature(fold_num=2),
+            GetFoldFeature(fold_num=3),
+        ]
 
 
 # =================================================================================
