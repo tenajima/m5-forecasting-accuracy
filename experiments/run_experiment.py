@@ -20,6 +20,7 @@ def main():
             "verbose_evals": 100,
         }
     fit_params = {"eval_metric": "rmse", "early_stopping_rounds": 100, "verbose": 100}
+    print(test_data.test.head())
 
     run_experiment(
         model_params=model_params,

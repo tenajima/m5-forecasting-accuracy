@@ -10,12 +10,14 @@ class ReadAndTransformData(gokart.TaskOnKart):
         predict_columns = ["d_19" + str(i) for i in range(14, 70)]
 
         for col in predict_columns:
-            train[col] = pd.NA
+            train[col] = -1
 
         # d_から始まるやつのみにしぼる
         daily = train[train.columns[train.columns.str.startswith("d_")]].copy()
         dataset = (
-            daily.stack().reset_index().rename(columns={"level_1": "d", 0: "target"})
+            daily.reset_index()
+            .melt(id_vars=["id"])
+            .rename(columns={"variable": "d", "value": "target"})
         )
 
         # calendarのdate情報を付与
@@ -29,7 +31,6 @@ class ReadAndTransformData(gokart.TaskOnKart):
         dataset = dataset.sort_values("date").reset_index(drop=True)
 
         # lightgbmがInt型に対応していない
-        # dataset = dataset.convert_dtypes()
         dataset["target"] = dataset["target"].astype(int)
 
         self.dump(dataset)
