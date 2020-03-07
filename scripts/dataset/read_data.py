@@ -28,6 +28,8 @@ class ReadAndTransformData(gokart.TaskOnKart):
         dataset["date"] = pd.to_datetime(dataset["date"])
         dataset = dataset.sort_values("date").reset_index(drop=True)
 
-        dataset = dataset.convert_dtypes()
+        # lightgbmがInt型に対応していない
+        # dataset = dataset.convert_dtypes()
+        dataset["target"] = dataset["target"].astype(int)
 
         self.dump(dataset)
