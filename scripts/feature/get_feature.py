@@ -76,7 +76,9 @@ class GetFoldFeature(gokart.TaskOnKart):
         return ff.get_feature_task(features, fold_num=self.fold_num)
 
     def output(self):
-        return self.make_target(f"./feature/feature_fold_{self.fold_num}.pkl")
+        return self.make_target(
+            f"./feature/feature_fold_{self.fold_num}.pkl", use_unique_id=False
+        )
 
     def run(self):
         data: DataForTrain = self.load("Target")
@@ -98,6 +100,7 @@ class GetFeature(luigi.WrapperTask):
             GetFoldFeature(fold_num=1),
             GetFoldFeature(fold_num=2),
             GetFoldFeature(fold_num=3),
+            GetFoldFeature(fold_num=4),
         ]
 
 

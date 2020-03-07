@@ -1,0 +1,13 @@
+{
+    "seed": 42,
+    "learning_rate": 0.01,
+    "n_estimators": 100000,
+    "verbose_evals": 100,
+    "lambda_l1": 5.320595316008756,
+    "lambda_l2": 0.1976765675931708,
+    "num_leaves": 28,
+    "feature_fraction": 0.9159999999999999,
+    "bagging_fraction": 0.956639398917581,
+    "bagging_freq": 4,
+    "min_child_samples": 50
+}
