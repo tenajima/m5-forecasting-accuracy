@@ -11,36 +11,23 @@ from scripts.fold import GetFold
 
 
 @dataclass
-class DataSet:
+class Dataset:
     history: pd.DataFrame
-    train: pd.DataFrame
-    test: pd.DataFrame
+    data: pd.DataFrame
 
 
-class GetDatasetOfFold(gokart.TaskOnKart):
-    fold_num = luigi.IntParameter()
-
+class GetDataSet(gokart.TaskOnKart):
     def requires(self):
-        return {"data": ReadAndTransformData(), "fold": GetFold()}
+        return {"data": ReadAndTransformData()}
 
     def output(self):
-        return self.make_target("./dataset/dataset_fold.pkl")
+        return self.make_target("./dataset/dataset.pkl")
 
     def run(self):
-        data = self.load("data")
+        all_data = self.load("data")
+        history = all_data[all_data["date"] < "2016-03-27"]
+        data = all_data[all_data["date"] >= "2016-03-27"]
 
-        fold = Nth(self.fold_num, self.load("fold"))
-        train_index, valid_index = next(fold.split(data))
-
-        train = data.iloc[train_index]
-        valid = data.iloc[valid_index]
-
-        # 履歴データの期間
-        history_start = train["date"].min() - timedelta(days=366)
-        history_end = train["date"].min() - timedelta(days=1)
-
-        history = data[(data["date"] >= history_start) & (data["date"] <= history_end)]
-
-        dataset = DataSet(history, train, valid)
+        dataset = Dataset(history, data)
 
         self.dump(dataset)
