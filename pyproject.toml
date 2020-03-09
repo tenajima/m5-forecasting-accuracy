@@ -14,9 +14,9 @@ gokart = "^0.3.11"
 python-dotenv = "^0.11.0"
 category-encoders = "^2.1.0"
 optuna = "^1.1.0"
-nyaggle = {git = "https://github.com/nyanp/nyaggle.git", rev = "master"}
 mlflow = "^1.6.0"
 click = "^7.0"
+nyaggle = {git = "https://github.com/tenajima/nyaggle.git", rev = "feat_time_series_split_detector"}
 
 [tool.poetry.dev-dependencies]
 jupyterlab = "^1.2.6"

@@ -91,6 +91,17 @@ class GetFoldFeature(gokart.TaskOnKart):
             data.train = data.train.join(feature.train)
             data.test = data.test.join(feature.test)
 
+        calendar = pd.read_csv(
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d", "date"]
+        )
+        calendar["date"] = pd.to_datetime(calendar["date"])
+        data.train = (
+            data.train.reset_index().merge(calendar, on="d").set_index(["id", "d"])
+        )
+        data.test = (
+            data.test.reset_index().merge(calendar, on="d").set_index(["id", "d"])
+        )
+
         self.dump(data)
 
 

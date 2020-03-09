@@ -4,7 +4,7 @@ from nyaggle.validation import TimeSeriesSplit
 
 class GetFold(gokart.TaskOnKart):
     def output(self):
-        return self.make_target("./fold/fold.pkl")
+        return self.make_target("./fold/fold.pkl", use_unique_id=False)
 
     def run(self):
         times = [
