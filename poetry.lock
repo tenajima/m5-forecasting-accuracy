@@ -1045,6 +1045,7 @@ all = ["catboost (>=0.17)", "lightgbm", "xgboost", "torch", "mlflow"]
 reference = "23e34cffd77ce4d37cf910fef03dfca6b63e84e1"
 type = "git"
 url = "https://github.com/tenajima/nyaggle.git"
+
 [[package]]
 category = "main"
 description = "A hyperparameter optimization framework"

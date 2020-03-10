@@ -1,13 +1,9 @@
 from dataclasses import dataclass
-from datetime import timedelta
 
 import gokart
-import luigi
 import pandas as pd
-from nyaggle.validation import Nth
 
 from scripts.dataset.read_data import ReadAndTransformData
-from scripts.fold import GetFold
 
 
 @dataclass
@@ -16,7 +12,7 @@ class Dataset:
     data: pd.DataFrame
 
 
-class GetDataSet(gokart.TaskOnKart):
+class GetDataset(gokart.TaskOnKart):
     def requires(self):
         return {"data": ReadAndTransformData()}
 
@@ -25,9 +21,12 @@ class GetDataSet(gokart.TaskOnKart):
 
     def run(self):
         all_data = self.load("data")
-        history = all_data[all_data["date"] < "2016-03-27"]
-        data = all_data[all_data["date"] >= "2016-03-27"]
+        # history = all_data[all_data["date"] < "2016-03-27"]
+        # data = all_data[all_data["date"] >= "2016-03-27"]
 
-        dataset = Dataset(history, data)
+        dataset = Dataset(
+            all_data[all_data["date"] < "2016-03-27"],
+            all_data[all_data["date"] >= "2016-03-27"],
+        )
 
         self.dump(dataset)
