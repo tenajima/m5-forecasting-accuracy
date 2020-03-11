@@ -164,6 +164,7 @@ input/
 
 experiments/**/*.csv
 *.ipynb
+!experiments/submit.ipynb
 
 # nyaggle & mlflow
 mlruns/

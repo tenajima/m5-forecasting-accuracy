@@ -6,6 +6,7 @@ from typing import Dict, List
 import gokart
 import pandas as pd
 from tqdm import tqdm
+from sklearn.preprocessing import LabelEncoder
 
 from scripts.utils import reduce_mem_usage
 
@@ -59,7 +60,7 @@ class GetFeature(gokart.TaskOnKart):
 
     def requires(self):
         ff = FeatureFactory()
-        features = ["Target", "SimpleKernel", "SimpleTime"]
+        features = ["Target", "SimpleKernel", "SimpleTime", "SimpleLabelEncode"]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
             features = self.feature_list()
@@ -195,9 +196,6 @@ class SimpleKernel(Feature):
 
 
 class SimpleTime(Feature):
-    # def requires(self):
-    #     return {"data": ReadAndTransformData()}
-
     def run(self):
         data = self.load("data")
         data = data[["id", "date"]]
@@ -215,3 +213,29 @@ class SimpleTime(Feature):
         data = self.set_index(data)
         self.dump(data)
 
+
+class SimpleLabelEncode(Feature):
+    def run(self):
+        data = self.load("data")
+        cat_columns = [
+            "item_id",
+            "dept_id",
+            "cat_id",
+            "store_id",
+            "state_id",
+            "event_name_1",
+            "event_type_1",
+            "event_name_2",
+            "event_type_2",
+        ]
+        use_cols = self.index_columns + cat_columns
+        data = data[use_cols]
+        nan_features = ["event_name_1", "event_type_1", "event_name_2", "event_type_2"]
+        for feature in nan_features:
+            data[feature].fillna("unknown", inplace=True)
+        for feature in cat_columns:
+            encoder = LabelEncoder()
+            data[feature] = encoder.fit_transform(data[feature])
+
+        data = self.set_index(data)
+        self.dump(data)
