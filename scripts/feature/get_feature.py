@@ -76,7 +76,7 @@ class GetFeature(gokart.TaskOnKart):
             if key == "Target":
                 continue
             feature: DataForTrain = self.load(key)
-            data = data.join(feature.train)
+            data = data.join(feature)
 
         self.dump(data)
 
@@ -89,6 +89,22 @@ class Feature(gokart.TaskOnKart):
 
     index_columns = ["id", "date"]
     predict_column = "demand"
+    to_history_date = "2015-03-27"  # 2015年3月27日までは履歴データとして使う
+
+    def set_index(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        to_history_date以降のデータに対してindexをsetして、メモリを削減したデータフレームを返す。
+
+        Args:
+            data (pd.DataFrame): 特徴量のデータフレーム
+
+        Returns:
+            pd.DataFrame:
+        """
+        data = data.query(f"date > '{self.to_history_date}'")
+        data = data.set_index(self.index_columns)
+        data = reduce_mem_usage(data)
+        return data
 
     def requires(self):
         return {"data": ReadAndTransformData()}
@@ -98,14 +114,11 @@ class Feature(gokart.TaskOnKart):
 
 
 class Target(Feature):
-    # def requires(self):
-    #     return {"data": ReadAndTransformData()}
-
     def run(self):
         data = self.load("data")
         print("loaded")
         data = data[["id", "demand", "date"]]
-        print(data.head())
+        data = self.set_index(data)
         self.dump(data)
 
 
@@ -113,9 +126,6 @@ class SimpleKernel(Feature):
     """
     simple feature from kernel(https://www.kaggle.com/ragnar123/very-fst-model)
     """
-
-    # def requires(self):
-    #     return {"data": ReadAndTransformData()}
 
     def run(self):
         data = self.load("data")
@@ -176,10 +186,11 @@ class SimpleKernel(Feature):
         data["rolling_price_std_t30"] = data.groupby(["id"])["sell_price"].transform(
             lambda x: x.rolling(30).std()
         )
-        data.drop(["rolling_price_max_t365", "lag_price_t1"], inplace=True, axis=1)
+        data.drop(
+            ["rolling_price_max_t365", "lag_price_t1", "demand"], inplace=True, axis=1
+        )
 
-        print("reducing...")
-        data = reduce_mem_usage(data.set_index(self.index_columns))
+        data = self.set_index(data)
         self.dump(data)
 
 
@@ -199,11 +210,8 @@ class SimpleTime(Feature):
         data["day"] = data["tmp"].dt.day
         data["dayofweek"] = data["tmp"].dt.dayofweek
 
-        data = data.set_index(self.index_columns)
-        data = data[["year", "month", "week", "day", "dayofweek"]]
+        data = data[["id", "date", "year", "month", "week", "day", "dayofweek"]]
 
-        print("reducing...")
-        data = reduce_mem_usage(data)
-        print("dumping...")
+        data = self.set_index(data)
         self.dump(data)
 
