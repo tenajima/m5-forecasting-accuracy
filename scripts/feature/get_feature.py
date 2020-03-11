@@ -1,15 +1,12 @@
 import inspect
 from dataclasses import dataclass
+from scripts.dataset.read_data import ReadAndTransformData
 from typing import Dict, List
 
-import category_encoders as ce
 import gokart
-import luigi
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from scripts.dataset.get_dataset import DataSet, GetDatasetOfFold
 from scripts.utils import reduce_mem_usage
 
 
@@ -20,9 +17,7 @@ class DataForTrain:
 
 
 class FeatureFactory:
-    def get_feature_instance(
-        self, feature_name: str, fold_num: int
-    ) -> gokart.TaskOnKart:
+    def get_feature_instance(self, feature_name: str) -> gokart.TaskOnKart:
 
         """特徴量名を指定するとその特徴量クラスのインスタンスを返す
         Args:
@@ -32,24 +27,20 @@ class FeatureFactory:
         """
 
         if feature_name in globals():
-            return globals()[feature_name](fold_num=fold_num)
+            return globals()[feature_name]()
         else:
             raise ValueError(f"{feature_name}って特徴量名は定義されてないよ!!!")
 
-    def get_feature_task(
-        self, features: List[str], fold_num: int
-    ) -> Dict[str, gokart.TaskOnKart]:
+    def get_feature_task(self, features: List[str]) -> Dict[str, gokart.TaskOnKart]:
         tasks = {}
         for feature in features:
-            tasks[feature] = self.get_feature_instance(feature, fold_num)
+            tasks[feature] = self.get_feature_instance(feature)
 
         return tasks
 
 
-class GetFoldFeature(gokart.TaskOnKart):
+class GetFeature(gokart.TaskOnKart):
     """ 特徴作成のための基底クラス """
-
-    fold_num = luigi.IntParameter()
 
     def feature_list(self) -> List[str]:
         """特徴量名リストを取得する"""
@@ -60,7 +51,6 @@ class GetFoldFeature(gokart.TaskOnKart):
                 tqdm,
                 DataForTrain,
                 FeatureFactory,
-                GetFoldFeature,
                 GetFeature,
                 Feature,
             ]:
@@ -69,50 +59,26 @@ class GetFoldFeature(gokart.TaskOnKart):
 
     def requires(self):
         ff = FeatureFactory()
-        features = ["Target", "HisoryAgg"]
+        features = ["Target", "SimpleKernel", "SimpleTime"]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
             features = self.feature_list()
-        return ff.get_feature_task(features, fold_num=self.fold_num)
+        return ff.get_feature_task(features)
 
     def output(self):
-        return self.make_target(
-            f"./feature/feature_fold_{self.fold_num}.pkl", use_unique_id=False
-        )
+        return self.make_target(f"./feature/feature.pkl", use_unique_id=False)
 
     def run(self):
-        data: DataForTrain = self.load("Target")
+        data = self.load("Target")
 
         for key in self.input().keys():
             print(key)
             if key == "Target":
                 continue
             feature: DataForTrain = self.load(key)
-            data.train = data.train.join(feature.train)
-            data.test = data.test.join(feature.test)
-
-        calendar = pd.read_csv(
-            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d", "date"]
-        )
-        calendar["date"] = pd.to_datetime(calendar["date"])
-        data.train = (
-            data.train.reset_index().merge(calendar, on="d").set_index(["id", "d"])
-        )
-        data.test = (
-            data.test.reset_index().merge(calendar, on="d").set_index(["id", "d"])
-        )
+            data = data.join(feature)
 
         self.dump(data)
-
-
-class GetFeature(luigi.WrapperTask):
-    def requires(self):
-        return [
-            GetFoldFeature(fold_num=1),
-            GetFoldFeature(fold_num=2),
-            GetFoldFeature(fold_num=3),
-            GetFoldFeature(fold_num=4),
-        ]
 
 
 # =================================================================================
@@ -121,13 +87,27 @@ class GetFeature(luigi.WrapperTask):
 class Feature(gokart.TaskOnKart):
     """ 基底クラス """
 
-    index_columns = ["id", "d"]
-    predict_column = "target"
+    index_columns = ["id", "date"]
+    predict_column = "demand"
+    to_history_date = "2015-03-27"  # 2015年3月27日までは履歴データとして使う
 
-    fold_num = luigi.IntParameter()
+    def set_index(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        to_history_date以降のデータに対してindexをsetして、メモリを削減したデータフレームを返す。
+
+        Args:
+            data (pd.DataFrame): 特徴量のデータフレーム
+
+        Returns:
+            pd.DataFrame:
+        """
+        data = data.query(f"date > '{self.to_history_date}'")
+        data = data.set_index(self.index_columns)
+        data = reduce_mem_usage(data)
+        return data
 
     def requires(self):
-        return {"dataset": GetDatasetOfFold(fold_num=self.fold_num)}
+        return {"data": ReadAndTransformData()}
 
 
 # ==================================================================================
@@ -135,41 +115,103 @@ class Feature(gokart.TaskOnKart):
 
 class Target(Feature):
     def run(self):
-        dataset: DataSet = self.load("dataset")
-        train = dataset.train
-        test = dataset.test
-
-        train = reduce_mem_usage(
-            train.set_index(self.index_columns)[[self.predict_column]]
-        )
-        test = reduce_mem_usage(
-            test.set_index(self.index_columns)[[self.predict_column]]
-        )
-
-        data = DataForTrain(train, test)
+        data = self.load("data")
+        print("loaded")
+        data = data[["id", "demand", "date"]]
+        data = self.set_index(data)
         self.dump(data)
 
 
-class HisoryAgg(Feature):
-    """ historyデータのtargetの集計特徴量 """
+class SimpleKernel(Feature):
+    """
+    simple feature from kernel(https://www.kaggle.com/ragnar123/very-fst-model)
+    """
 
     def run(self):
-        dataset: DataSet = self.load("dataset")
+        data = self.load("data")
+        data = data[["id", "demand", "date", "sell_price"]]
 
-        history = dataset.history.groupby("id").agg(
-            {"target": ["sum", "max", "min", "mean", "var", "skew"]}
+        print("lag calc")
+        data["lag_t28"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28)
         )
-        history.columns = ["history_" + "_".join(col) for col in history.columns.values]
-        history = history.reset_index()
+        data["lag_t29"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(29)
+        )
+        data["lag_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(30)
+        )
+        data["rolling_mean_t7"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(7).mean()
+        )
+        data["rolling_std_t7"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(7).std()
+        )
+        data["rolling_mean_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(30).mean()
+        )
+        data["rolling_mean_t90"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(90).mean()
+        )
+        data["rolling_mean_t180"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(180).mean()
+        )
+        data["rolling_std_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(30).std()
+        )
+        data["rolling_skew_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(30).skew()
+        )
+        data["rolling_kurt_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(30).kurt()
+        )
 
-        train = dataset.train[self.index_columns]
-        test = dataset.test[self.index_columns]
+        # price features
+        print("price calc")
+        data["lag_price_t1"] = data.groupby(["id"])["sell_price"].transform(
+            lambda x: x.shift(1)
+        )
+        data["price_change_t1"] = (data["lag_price_t1"] - data["sell_price"]) / (
+            data["lag_price_t1"]
+        )
+        data["rolling_price_max_t365"] = data.groupby(["id"])["sell_price"].transform(
+            lambda x: x.shift(1).rolling(365).max()
+        )
+        data["price_change_t365"] = (
+            data["rolling_price_max_t365"] - data["sell_price"]
+        ) / (data["rolling_price_max_t365"])
+        data["rolling_price_std_t7"] = data.groupby(["id"])["sell_price"].transform(
+            lambda x: x.rolling(7).std()
+        )
+        data["rolling_price_std_t30"] = data.groupby(["id"])["sell_price"].transform(
+            lambda x: x.rolling(30).std()
+        )
+        data.drop(
+            ["rolling_price_max_t365", "lag_price_t1", "demand"], inplace=True, axis=1
+        )
 
-        train = train.merge(history, on="id", how="left")
-        test = test.merge(history, on="id", how="left")
-
-        train = reduce_mem_usage(train.set_index(self.index_columns))
-        test = reduce_mem_usage(test.set_index(self.index_columns))
-
-        data = DataForTrain(train, test)
+        data = self.set_index(data)
         self.dump(data)
+
+
+class SimpleTime(Feature):
+    # def requires(self):
+    #     return {"data": ReadAndTransformData()}
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "date"]]
+
+        print("date calculating...")
+        data["tmp"] = pd.to_datetime(data["date"])
+        data["year"] = data["tmp"].dt.year
+        data["month"] = data["tmp"].dt.month
+        data["week"] = data["tmp"].dt.week
+        data["day"] = data["tmp"].dt.day
+        data["dayofweek"] = data["tmp"].dt.dayofweek
+
+        data = data[["id", "date", "year", "month", "week", "day", "dayofweek"]]
+
+        data = self.set_index(data)
+        self.dump(data)
+

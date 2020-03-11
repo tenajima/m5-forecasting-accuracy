@@ -1,10 +1,9 @@
 import luigi
 from dotenv import load_dotenv
 
-from scripts.train.tuning import TuningLGB
-from scripts.train.train import TrainStratifiedKFold
-from scripts.submit.predict import Predict
+from scripts.feature import GetFeature
+
 
 if __name__ == "__main__":
-    load_dotenv()
-    luigi.run(["Preprocess", "--workers", "8", "--local-scheduler"])
+    load_dotenv("env")
+    luigi.build([GetFeature()], workers=1, local_scheduler=True)
