@@ -4,6 +4,7 @@ from scripts.dataset.read_data import ReadAndTransformData
 from typing import Dict, List
 
 import gokart
+import holidays
 import pandas as pd
 from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder
@@ -65,6 +66,7 @@ class GetFeature(gokart.TaskOnKart):
             "SimpleKernel",
             "SimpleTime",
             "SimpleLabelEncode",
+            "Holiday",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -352,3 +354,40 @@ class HistoricalDemandAggByStoreMonth(HistoricalDemandAggByItemMonth):
 
 class HistoricalDemandAggByStateMonth(HistoricalDemandAggByItemMonth):
     target_columns = ["state_id"]
+
+
+class Holiday(Feature):
+    def run(self):
+        calendar = pd.read_csv(
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["date"]
+        )
+
+        # 前の日、休日が休日か見るために頭とお尻にくっつける
+        calendar.loc[calendar.shape[0]] = "2011-01-28"
+        calendar.loc[calendar.shape[0]] = "2016-06-20"
+        calendar = calendar.sort_values("date").reset_index(drop=True)
+        calendar["datetime"] = pd.to_datetime(calendar["date"])
+
+        calendar["dayofweek"] = calendar["datetime"].dt.dayofweek
+        calendar["is_weekend"] = calendar["dayofweek"].isin([5, 6]).astype(int)
+
+        us_holidays = holidays.UnitedStates()
+        calendar["is_US_holiday"] = (
+            calendar["datetime"].map(lambda dt: dt in us_holidays).astype(int)
+        )
+
+        calendar["is_day_off"] = calendar["is_weekend"] | calendar["is_US_holiday"]
+
+        calendar["tmp"] = calendar["is_day_off"].diff(periods=-1)
+        calendar["before_day_off"] = (calendar["tmp"] == -1).astype(int)
+        del calendar["tmp"]
+
+        calendar["tmp"] = calendar["is_day_off"].diff()
+        calendar["after_day_off"] = (calendar["tmp"] == -1).astype(int)
+        del calendar["tmp"]
+        del calendar["datetime"], calendar["dayofweek"]
+
+        data = self.load("data")[["id", "date"]]
+        data = data.merge(calendar, on="date")
+        data = self.set_index(data)
+        self.dump(data)
