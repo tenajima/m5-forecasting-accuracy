@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import pandas as pd
 from nyaggle.experiment import run_experiment
 from nyaggle.validation import TimeSeriesSplit
@@ -8,13 +9,31 @@ import json
 def main():
     data = pd.read_pickle("./resources/feature/feature.pkl")
     data = data.reset_index().set_index("id")
-    train = data[data["date"] <= "2016-04-24"]
-    test = data[(data["date"] > "2016-04-24")]
+    train = data[data["date"] < "2016-04-25"]
+    test = data[(data["date"] >= "2016-04-25")]
     train["date"] = pd.to_datetime(train["date"])
 
-    folds = TimeSeriesSplit(
-        "date", times=[(("2015-03-28", "2016-03-28"), ("2016-3-28", "2016-04-25"))]
-    )
+    from_test_date = date(2016, 4, 25)
+    delta_valid = timedelta(days=28)
+    delta_train = timedelta(days=28 * 3)
+    date_format = r"%Y-%m-%d"
+    times = [
+        (
+            (
+                (from_test_date - delta_valid * (i + 1) - delta_train).strftime(
+                    date_format
+                ),
+                (from_test_date - delta_valid * (i + 1)).strftime(date_format),
+            ),
+            (
+                (from_test_date - delta_valid * (i + 1)).strftime(date_format),
+                (from_test_date - delta_valid * (i)).strftime(date_format),
+            ),
+        )
+        for i in range(5)
+    ]
+    times = list(reversed(times))
+    folds = TimeSeriesSplit("date", times=times)
     try:
         model_params = json.load(open("./model_params.json"))
     except FileNotFoundError:
