@@ -65,22 +65,6 @@ class GetFeature(gokart.TaskOnKart):
             "SimpleKernel",
             "SimpleTime",
             "SimpleLabelEncode",
-            "HistoricalDemandAggByItem",
-            "HistoricalDemandAggByDept",
-            "HistoricalDemandAggByCat",
-            "HistoricalDemandAggByStore",
-            "HistoricalDemandAggByState",
-            "HistoricalDemandAggByItemStore",
-            "HistoricalDemandAggByItemState",
-            "HistoricalDemandAggByDeptStore",
-            "HistoricalDemandAggByDeptState",
-            "HistoricalDemandAggByCatStore",
-            "HistoricalDemandAggByCatState",
-            "HistoricalDemandAggByItemMonth",
-            "HistoricalDemandAggByDeptMonth",
-            "HistoricalDemandAggByCatMonth",
-            "HistoricalDemandAggByStoreMonth",
-            "HistoricalDemandAggByStateMonth",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -367,4 +351,4 @@ class HistoricalDemandAggByStoreMonth(HistoricalDemandAggByItemMonth):
 
 
 class HistoricalDemandAggByStateMonth(HistoricalDemandAggByItemMonth):
-    target_columns = ["store_id"]
+    target_columns = ["state_id"]
