@@ -15,7 +15,7 @@ def main():
 
     from_test_date = date(2016, 4, 25)
     delta_valid = timedelta(days=28)
-    delta_train = timedelta(days=28 * 3)
+    delta_train = timedelta(days=28 * 6)
     date_format = r"%Y-%m-%d"
     times = [
         (
@@ -33,6 +33,7 @@ def main():
         for i in range(5)
     ]
     times = list(reversed(times))
+    print(times)
     folds = TimeSeriesSplit("date", times=times)
     try:
         model_params = json.load(open("./model_params.json"))
