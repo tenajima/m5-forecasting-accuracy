@@ -60,7 +60,12 @@ class GetFeature(gokart.TaskOnKart):
 
     def requires(self):
         ff = FeatureFactory()
-        features = ["Target", "SimpleKernel", "SimpleTime", "SimpleLabelEncode"]
+        features = [
+            "Target",
+            "SimpleKernel",
+            "SimpleTime",
+            "SimpleLabelEncode",
+        ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
             features = self.feature_list()
@@ -239,3 +244,111 @@ class SimpleLabelEncode(Feature):
 
         data = self.set_index(data)
         self.dump(data)
+
+
+class HistoricalDemandAggByItem(Feature):
+    groupby_key = ["item_id"]
+    """ 履歴のitem_idに関するdemandの統計特徴量 """
+
+    def run(self):
+        data = self.load("data")[["id", "date", "demand"] + self.groupby_key]
+        history = data.query(f"date <= '{self.to_history_date}'").copy()
+        data = data.query(f"date > '{self.to_history_date}'")
+
+        history = history.groupby(self.groupby_key).agg(
+            {"demand": ["sum", "max", "std"]}
+        )
+        columns = [
+            "history_" + "_".join(self.groupby_key) + "_" + col[0] + "_" + col[1]
+            for col in history.columns.values
+        ]
+        history.columns = columns
+
+        data = data.merge(history, on=self.groupby_key)
+
+        data = data.drop(columns=["demand"] + self.groupby_key)
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class HistoricalDemandAggByDept(HistoricalDemandAggByItem):
+    groupby_key = ["dept_id"]
+
+
+class HistoricalDemandAggByCat(HistoricalDemandAggByItem):
+    groupby_key = ["cat_id"]
+
+
+class HistoricalDemandAggByStore(HistoricalDemandAggByItem):
+    groupby_key = ["store_id"]
+
+
+class HistoricalDemandAggByState(HistoricalDemandAggByItem):
+    groupby_key = ["state_id"]
+
+
+class HistoricalDemandAggByItemStore(HistoricalDemandAggByItem):
+    groupby_key = ["item_id", "store_id"]
+
+
+class HistoricalDemandAggByItemState(HistoricalDemandAggByItem):
+    groupby_key = ["item_id", "state_id"]
+
+
+class HistoricalDemandAggByDeptStore(HistoricalDemandAggByItem):
+    groupby_key = ["dept_id", "store_id"]
+
+
+class HistoricalDemandAggByDeptState(HistoricalDemandAggByItem):
+    groupby_key = ["dept_id", "state_id"]
+
+
+class HistoricalDemandAggByCatStore(HistoricalDemandAggByItem):
+    groupby_key = ["cat_id", "store_id"]
+
+
+class HistoricalDemandAggByCatState(HistoricalDemandAggByItem):
+    groupby_key = ["cat_id", "state_id"]
+
+
+class HistoricalDemandAggByItemMonth(Feature):
+    """ 履歴のitem_id, monthに関するdemandの統計特徴量 """
+
+    target_columns = ["item_id"]
+
+    def run(self):
+        data = self.load("data")[["id", "date", "demand"] + self.target_columns]
+        # yyyy-mm-ddのmmの部分だけ取り出す
+        data["month"] = data["date"].str[5:7]
+        history = data.query(f"date <= '{self.to_history_date}'").copy()
+        data = data.query(f"date > '{self.to_history_date}'")
+
+        groupby_key = ["month"] + self.target_columns
+        history = history.groupby(groupby_key).agg({"demand": ["sum", "max", "std"]})
+        columns = [
+            "history_" + "_".join(groupby_key) + "_" + col[0] + "_" + col[1]
+            for col in history.columns.values
+        ]
+        history.columns = columns
+
+        data = data.merge(history, on=groupby_key)
+
+        data = data.drop(columns=["demand"] + groupby_key)
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class HistoricalDemandAggByDeptMonth(HistoricalDemandAggByItemMonth):
+    target_columns = ["dept_id"]
+
+
+class HistoricalDemandAggByCatMonth(HistoricalDemandAggByItemMonth):
+    target_columns = ["cat_id"]
+
+
+class HistoricalDemandAggByStoreMonth(HistoricalDemandAggByItemMonth):
+    target_columns = ["store_id"]
+
+
+class HistoricalDemandAggByStateMonth(HistoricalDemandAggByItemMonth):
+    target_columns = ["state_id"]
