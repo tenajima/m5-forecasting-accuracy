@@ -70,7 +70,7 @@ def main():
         type_of_target="continuous",
         fit_params=fit_params,
         with_auto_hpo=False,
-        with_mlflow=True,
+        with_mlflow=False,
     )
 
 
