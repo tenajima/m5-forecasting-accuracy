@@ -66,6 +66,7 @@ class GetFeature(gokart.TaskOnKart):
             "SimpleKernel",
             "SimpleTime",
             "SimpleLabelEncode",
+            "Holiday",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:

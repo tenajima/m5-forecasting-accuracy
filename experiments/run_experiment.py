@@ -13,28 +13,37 @@ def main():
     test = data[(data["date"] >= "2016-04-25")]
     train["date"] = pd.to_datetime(train["date"])
 
-    # from_test_date = date(2016, 4, 25)
-    # delta_valid = timedelta(days=28)
-    # delta_train = timedelta(days=28 * 6)
-    # date_format = r"%Y-%m-%d"
-    # times = [
-    #     (
-    #         (
-    #             (from_test_date - delta_valid * (i + 1) - delta_train).strftime(
-    #                 date_format
-    #             ),
-    #             (from_test_date - delta_valid * (i + 1)).strftime(date_format),
-    #         ),
-    #         (
-    #             (from_test_date - delta_valid * (i + 1)).strftime(date_format),
-    #             (from_test_date - delta_valid * (i)).strftime(date_format),
-    #         ),
-    #     )
-    #     for i in range(5)
-    # ]
-    # times = list(reversed(times))
-    # print(times)
-    times = [(("2013-07-18", "2016-03-28"), ("2016-03-28", "2016-04-25"))]
+    valid_type = "short"  # "long", "short", "ts"
+
+    if valid_type == "ts":
+        from_test_date = date(2016, 4, 25)
+        delta_valid = timedelta(days=28)
+        delta_train = timedelta(days=300)
+        date_format = r"%Y-%m-%d"
+        times = [
+            (
+                (
+                    (from_test_date - delta_valid * (i + 1) - delta_train).strftime(
+                        date_format
+                    ),
+                    (from_test_date - delta_valid * (i + 1)).strftime(date_format),
+                ),
+                (
+                    (from_test_date - delta_valid * (i + 1)).strftime(date_format),
+                    (from_test_date - delta_valid * (i)).strftime(date_format),
+                ),
+            )
+            for i in range(5)
+        ]
+        times = list(reversed(times))
+        print(times)
+    elif valid_type == "long":
+        times = [(("2013-07-18", "2016-03-28"), ("2016-03-28", "2016-04-25"))]
+    elif valid_type == "short":
+        times = [(("2015-03-28", "2016-03-28"), ("2016-03-28", "2016-04-25"))]
+    else:
+        raise ValueError("valid_type invalid")
+
     folds = TimeSeriesSplit("date", times=times)
     try:
         model_params = json.load(open("./model_params.json"))
