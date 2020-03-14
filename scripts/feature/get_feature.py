@@ -64,6 +64,7 @@ class GetFeature(gokart.TaskOnKart):
         features = [
             "Target",
             "SimpleKernel",
+            "Origin",
             "SimpleTime",
             "SimpleLabelEncode",
             "Holiday",
@@ -198,6 +199,18 @@ class SimpleKernel(Feature):
             ["rolling_price_max_t365", "lag_price_t1", "demand"], inplace=True, axis=1
         )
 
+        # sell_priceのNaN埋め
+        data["sell_price"] = data["sell_price"].fillna(-999)
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class Origin(Feature):
+    """ datasetを読み込んで特に手を加えないやつ """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "date", "snap_CA", "snap_TX", "snap_WI", "wm_yr_wk"]]
         data = self.set_index(data)
         self.dump(data)
 
