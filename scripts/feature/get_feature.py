@@ -68,6 +68,7 @@ class GetFeature(gokart.TaskOnKart):
             "SimpleTime",
             "SimpleLabelEncode",
             "Holiday",
+            # "SellPriceChange",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -402,5 +403,19 @@ class Holiday(Feature):
 
         data = self.load("data")[["id", "date"]]
         data = data.merge(calendar, on="date")
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class SellPriceChange(Feature):
+    def run(self):
+        data = self.load("data")[["id", "date", "sell_price"]]
+
+        # 昨日との比較
+        data["diff_yesterday_id_sell_price"] = (
+            data.groupby("id")["sell_price"].transform(lambda x: x.diff()).fillna(-999)
+        )
+
+        data = data.drop(columns=["sell_price"])
         data = self.set_index(data)
         self.dump(data)
