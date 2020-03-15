@@ -1,6 +1,6 @@
 import gokart
-import pandas as pd
 import luigi
+import pandas as pd
 
 from scripts.utils import reduce_mem_usage
 

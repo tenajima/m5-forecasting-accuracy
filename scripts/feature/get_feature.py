@@ -1,14 +1,13 @@
 import inspect
 from dataclasses import dataclass
-from scripts.dataset.read_data import ReadAndTransformData
 from typing import Dict, List
 
 import gokart
 import holidays
 import pandas as pd
-from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder
 
+from scripts.dataset.read_data import ReadAndTransformData
 from scripts.utils import reduce_mem_usage
 
 
@@ -50,7 +49,6 @@ class GetFeature(gokart.TaskOnKart):
         for name in globals():
             obj = globals()[name]
             if inspect.isclass(obj) and obj not in [
-                tqdm,
                 DataForTrain,
                 FeatureFactory,
                 GetFeature,
@@ -68,6 +66,11 @@ class GetFeature(gokart.TaskOnKart):
             "SimpleTime",
             "SimpleLabelEncode",
             "Holiday",
+            # "AggItemIdMean",
+            # "AggDeptIdMean",
+            # "AggCatIdMean",
+            # "AggStoreIdMean",
+            # "AggStateIdMean",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -98,7 +101,7 @@ class Feature(gokart.TaskOnKart):
 
     index_columns = ["id", "date"]
     predict_column = "demand"
-    to_history_date = "2013-07-17"  # この日までは履歴データとして使う -> 使わない
+    to_history_date = "2015-03-27"  # この日までは履歴データとして使う -> 使わない
 
     def set_index(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -404,3 +407,84 @@ class Holiday(Feature):
         data = data.merge(calendar, on="date")
         data = self.set_index(data)
         self.dump(data)
+
+
+# TODO: 実装したけど、変なことしてないはずなのにスコアが悪化するのでそこを調査する
+class AggItemIdMean(Feature):
+    groupby_key = ["item_id"]
+
+    def run(self):
+        data = self.load("data")[["id", "date", "demand"] + self.groupby_key]
+
+        group = data.groupby(["date"] + self.groupby_key)[["demand"]].mean()
+
+        group["agg_mean_" + "_".join(self.groupby_key) + "_lag_t28"] = group.groupby(
+            self.groupby_key
+        )["demand"].transform(lambda x: x.shift(28))
+
+        group["agg_mean_" + "_".join(self.groupby_key) + "_lag_t29"] = group.groupby(
+            self.groupby_key
+        )["demand"].transform(lambda x: x.shift(29))
+
+        group["agg_mean_" + "_".join(self.groupby_key) + "_lag_t30"] = group.groupby(
+            self.groupby_key
+        )["demand"].transform(lambda x: x.shift(30))
+
+        group[
+            "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t7"
+        ] = group.groupby(self.groupby_key)["demand"].transform(
+            lambda x: x.shift(28).rolling(7).mean()
+        )
+
+        group[
+            "agg_mean_" + "_".join(self.groupby_key) + "_rolling_std_t7"
+        ] = group.groupby(self.groupby_key)["demand"].transform(
+            lambda x: x.shift(28).rolling(7).std()
+        )
+
+        group[
+            "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t30"
+        ] = group.groupby(self.groupby_key)["demand"].transform(
+            lambda x: x.shift(28).rolling(30).mean()
+        )
+
+        group[
+            "agg_mean_" + "_".join(self.groupby_key) + "_rolling_std_t30"
+        ] = group.groupby(self.groupby_key)["demand"].transform(
+            lambda x: x.shift(28).rolling(30).std()
+        )
+
+        group[
+            "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t90"
+        ] = group.groupby(self.groupby_key)["demand"].transform(
+            lambda x: x.shift(28).rolling(90).mean()
+        )
+
+        group[
+            "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t180"
+        ] = group.groupby(self.groupby_key)["demand"].transform(
+            lambda x: x.shift(28).rolling(180).mean()
+        )
+
+        group = group.drop(columns="demand")
+
+        data = data.merge(group, on=["date"] + self.groupby_key)
+        data = data.drop(columns=["demand"] + self.groupby_key)
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class AggDeptIdMean(AggItemIdMean):
+    groupby_key = ["dept_id"]
+
+
+class AggCatIdMean(AggItemIdMean):
+    groupby_key = ["cat_id"]
+
+
+class AggStoreIdMean(AggItemIdMean):
+    groupby_key = ["store_id"]
+
+
+class AggStateIdMean(AggItemIdMean):
+    groupby_key = ["state_id"]
