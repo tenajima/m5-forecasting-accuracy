@@ -1,0 +1,15 @@
+{
+    "seed": 236,
+    "learning_rate": 0.01,
+    "n_estimators": 100000,
+    "boosting_type": "gbdt",
+    "metric": "rmse",
+    "bagging_fraction": 1.0,
+    "bagging_freq": 0,
+    "colsample_bytree": 0.75,
+    "lambda_l1": 6.713961114735107e-08,
+    "lambda_l2": 7.727615381403041e-07,
+    "num_leaves": 61,
+    "feature_fraction": 1.0,
+    "min_child_samples": 20
+}
