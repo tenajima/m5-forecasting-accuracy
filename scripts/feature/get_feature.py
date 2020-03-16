@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import gokart
 import holidays
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
@@ -71,6 +72,7 @@ class GetFeature(gokart.TaskOnKart):
             # "AggCatIdMean",
             # "AggStoreIdMean",
             # "AggStateIdMean",
+            "DaysDiff",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -488,3 +490,36 @@ class AggStoreIdMean(AggItemIdMean):
 
 class AggStateIdMean(AggItemIdMean):
     groupby_key = ["state_id"]
+
+
+class DaysDiff(Feature):
+    def run(self):
+        calendar = pd.read_csv(
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["date"]
+        )
+        calendar["datetime"] = pd.to_datetime(calendar["date"])
+        calendar["days_ago"] = (
+            pd.to_datetime("2016-03-28") - calendar["datetime"]
+        ).dt.days
+        calendar["days_ago"] = calendar["days_ago"].clip(0)
+
+        calendar["days_ago_exp_100"] = np.exp(
+            -(np.log(10) / 100) * calendar["days_ago"]
+        )
+        calendar["days_ago_exp_200"] = np.exp(
+            -(np.log(10) / 200) * calendar["days_ago"]
+        )
+        calendar["days_ago_exp_300"] = np.exp(
+            -(np.log(10) / 300) * calendar["days_ago"]
+        )
+        calendar["days_ago_exp_500"] = np.exp(
+            -(np.log(10) / 500) * calendar["days_ago"]
+        )
+        calendar = calendar.drop(columns="datetime")
+
+        data = self.load("data")[["id", "date"]]
+        data = data.merge(calendar, on="date")
+        print(data.head())
+        data = self.set_index(data)
+
+        self.dump(data)
