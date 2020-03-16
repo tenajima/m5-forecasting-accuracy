@@ -72,7 +72,8 @@ class GetFeature(gokart.TaskOnKart):
             # "AggCatIdMean",
             # "AggStoreIdMean",
             # "AggStateIdMean",
-            "DaysDiff",
+            # "DaysDiff",
+            # "LongRollingMean",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -522,4 +523,26 @@ class DaysDiff(Feature):
         print(data.head())
         data = self.set_index(data)
 
+        self.dump(data)
+
+
+class LongRollingMean(Feature):
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "demand", "date"]]
+
+        data["rolling365_mean_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(365 - 15).rolling(30).mean()
+        )
+        data["rolling730_mean_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(730 - 15).rolling(30).mean()
+        )
+        data["rolling1095_mean_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(1095 - 15).rolling(30).mean()
+        )
+        data["rolling1460_mean_t30"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(1460 - 15).rolling(30).mean()
+        )
+        data = data.drop(columns="demand")
+        data = self.set_index(data)
         self.dump(data)
