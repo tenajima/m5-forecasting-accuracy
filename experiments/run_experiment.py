@@ -69,7 +69,7 @@ def main():
         eval_func=mean_squared_error,
         type_of_target="continuous",
         fit_params=fit_params,
-        with_auto_hpo=True,
+        with_auto_hpo=False,
         with_mlflow=False,
     )
 
