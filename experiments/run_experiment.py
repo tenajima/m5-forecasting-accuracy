@@ -9,6 +9,25 @@ import json
 def main():
     data = pd.read_pickle("./resources/feature/feature.pkl")
     data = data.reset_index().set_index("id")
+
+    with_auto_hpo = True
+
+    # 不要な特徴量の排除
+    try:
+        drop_columns = pd.read_csv("./drop_columns.csv", usecols=["drop_columns"])
+        (
+            drop_columns.sort_values("drop_columns")
+            .reset_index(drop=True)
+            .to_csv("./drop_columns.csv", index=False)
+        )
+        drop_columns = set(drop_columns["drop_columns"])
+    except FileNotFoundError:
+        drop_columns = set()
+
+    drop_columns = list(set(data.columns) & drop_columns)
+    print(drop_columns)
+    data = data.drop(columns=drop_columns)
+
     train = data[data["date"] < "2016-04-25"]
     test = data[(data["date"] >= "2016-04-25")]
     train["date"] = pd.to_datetime(train["date"])
@@ -45,19 +64,29 @@ def main():
         raise ValueError("valid_type invalid")
 
     folds = TimeSeriesSplit("date", times=times)
-    try:
-        model_params = json.load(open("./model_params.json"))
-    except FileNotFoundError:
+    if with_auto_hpo:
         model_params = {
-            "seed": 236,
+            "seed": 110,
             "learning_rate": 0.01,
             "n_estimators": 100000,
             "boosting_type": "gbdt",
             "metric": "rmse",
-            "bagging_fraction": 0.75,
-            "bagging_freq": 10,
-            "colsample_bytree": 0.75,
         }
+    else:
+        try:
+            model_params = json.load(open("./model_params.json"))
+        except FileNotFoundError:
+            model_params = {
+                "seed": 110,
+                "learning_rate": 0.01,
+                "n_estimators": 100000,
+                "boosting_type": "gbdt",
+                "metric": "rmse",
+                "bagging_fraction": 0.75,
+                "bagging_freq": 10,
+                "colsample_bytree": 0.75,
+            }
+    print("tuningするよ", model_params)
     fit_params = {"eval_metric": "rmse", "early_stopping_rounds": 100, "verbose": 100}
 
     run_experiment(
@@ -69,7 +98,7 @@ def main():
         eval_func=mean_squared_error,
         type_of_target="continuous",
         fit_params=fit_params,
-        with_auto_hpo=False,
+        with_auto_hpo=with_auto_hpo,
         with_mlflow=False,
     )
 
