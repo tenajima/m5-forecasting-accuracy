@@ -72,8 +72,7 @@ class GetFeature(gokart.TaskOnKart):
             # "AggCatIdMean",
             # "AggStoreIdMean",
             # "AggStateIdMean",
-            # "DaysDiff",
-            # "LongRollingMean",
+            "LongRollingMean",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
