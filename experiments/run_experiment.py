@@ -72,6 +72,7 @@ def main():
             "boosting_type": "gbdt",
             "metric": "rmse",
         }
+        print("tuningするよ", model_params)
     else:
         try:
             model_params = json.load(open("./model_params.json"))
@@ -86,7 +87,7 @@ def main():
                 "bagging_freq": 10,
                 "colsample_bytree": 0.75,
             }
-    print("tuningするよ", model_params)
+        print("tuningしないよ", model_params)
     fit_params = {"eval_metric": "rmse", "early_stopping_rounds": 100, "verbose": 100}
 
     run_experiment(

@@ -72,7 +72,8 @@ class GetFeature(gokart.TaskOnKart):
             # "AggCatIdMean",
             # "AggStoreIdMean",
             # "AggStateIdMean",
-            "LongRollingMean",
+            # "LongRollingMean",
+            # "WeightRollingMean",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -523,6 +524,49 @@ class DaysDiff(Feature):
         data = self.set_index(data)
 
         self.dump(data)
+
+
+class WeightRollingMean(Feature):
+    def requires(self):
+        return {"mean": SimpleKernel(), "weight": DaysDiff()}
+
+    def run(self):
+        mean = self.load_data_frame(
+            "mean",
+            required_columns={
+                "rolling_mean_t7",
+                "rolling_mean_t30",
+                "rolling_mean_t90",
+                "rolling_mean_t180",
+            },
+            drop_columns=True,
+        )
+        weight = self.load_data_frame(
+            "weight",
+            required_columns={"days_ago_exp_100", "days_ago_exp_500"},
+            drop_columns=True,
+        )
+
+        mean = mean.join(weight)
+
+        for mean_term in [7, 30, 90, 180]:
+            for weight_param in [100, 500]:
+                mean[f"rolling_mean_t{mean_term}_exp{weight_param}"] = (
+                    mean[f"rolling_mean_t{mean_term}"]
+                    * mean[f"days_ago_exp_{weight_param}"]
+                )
+
+        mean = mean.drop(
+            columns=[
+                "rolling_mean_t7",
+                "rolling_mean_t30",
+                "rolling_mean_t90",
+                "rolling_mean_t180",
+                "days_ago_exp_100",
+                "days_ago_exp_500",
+            ]
+        )
+        mean = self.dump(mean)
 
 
 class LongRollingMean(Feature):
