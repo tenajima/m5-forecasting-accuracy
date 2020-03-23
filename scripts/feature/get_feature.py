@@ -61,6 +61,7 @@ class GetFeature(gokart.TaskOnKart):
     def requires(self):
         ff = FeatureFactory()
         features = [
+            "StoreId",
             "Target",
             "SimpleKernel",
             "Origin",
@@ -221,6 +222,19 @@ class Origin(Feature):
         self.dump(data)
 
 
+class StoreId(Feature):
+    """
+    store_idごとにモデルを作る際に参考にするぜ
+    ['CA_1', 'CA_2', 'CA_3', 'CA_4', 'TX_1', 'TX_2', 'TX_3', 'WI_1', 'WI_2', 'WI_3']
+    """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "date", "store_id"]]
+        data = self.set_index(data)
+        self.dump(data)
+
+
 class SimpleTime(Feature):
     def run(self):
         data = self.load("data")
@@ -247,7 +261,7 @@ class SimpleLabelEncode(Feature):
             "item_id",
             "dept_id",
             "cat_id",
-            "store_id",
+            # "store_id",
             "state_id",
             "event_name_1",
             "event_type_1",
