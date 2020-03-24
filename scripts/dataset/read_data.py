@@ -16,6 +16,18 @@ class ReadAndTransformData(gokart.TaskOnKart):
             "../input/m5-forecasting-accuracy/sales_train_validation.csv",
             nrows=self.nrows,
         )
+
+        # christmasの日は外れ値なので落とす
+        print("クリスマスはおとすぜ")
+        calendar = pd.read_csv(
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["date", "d"]
+        )
+        christmas_day = calendar.loc[
+            calendar["date"].str.contains("12-25"), "d"
+        ].tolist()
+        sales_train_validation = sales_train_validation.drop(columns=christmas_day)
+        del calendar, christmas_day
+
         sales_train_validation = pd.melt(
             sales_train_validation,
             id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],

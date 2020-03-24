@@ -61,7 +61,7 @@ class GetFeature(gokart.TaskOnKart):
     def requires(self):
         ff = FeatureFactory()
         features = [
-            "StoreId",
+            # "StoreId",
             "Target",
             "SimpleKernel",
             "Origin",
@@ -231,6 +231,8 @@ class StoreId(Feature):
     def run(self):
         data = self.load("data")
         data = data[["id", "date", "store_id"]]
+        encoder = LabelEncoder()
+        data["store_id"] = encoder.fit_transform(data["store_id"])
         data = self.set_index(data)
         self.dump(data)
 
@@ -261,7 +263,7 @@ class SimpleLabelEncode(Feature):
             "item_id",
             "dept_id",
             "cat_id",
-            # "store_id",
+            "store_id",
             "state_id",
             "event_name_1",
             "event_type_1",
