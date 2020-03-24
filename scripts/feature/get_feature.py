@@ -75,6 +75,7 @@ class GetFeature(gokart.TaskOnKart):
             # "AggStateIdMean",
             # "LongRollingMean",
             # "WeightRollingMean",
+            "GlobalTrend",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -604,4 +605,28 @@ class LongRollingMean(Feature):
         )
         data = data.drop(columns="demand")
         data = self.set_index(data)
+        self.dump(data)
+
+
+class GlobalTrend(Feature):
+    """ ウォルマート全体の傾向 """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "demand", "date"]]
+        trend = data.groupby("date")[["demand"]].sum().copy()
+        trend = (
+            trend.reset_index()
+            .reset_index()
+            .rename(columns={"index": "day"})
+            .set_index("date")
+        )
+
+        train = trend[trend.index < "2016-03-28"]
+        p = np.poly1d(np.polyfit(train["day"], train["demand"], 3))
+        trend["global_trend"] = p(trend["day"])
+        trend = trend.reset_index()
+        data = data.merge(trend[["date", "global_trend"]], on="date", how="left")
+
+        data = self.set_index(data[["id", "date", "global_trend"]])
         self.dump(data)
