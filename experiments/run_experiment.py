@@ -10,7 +10,7 @@ def main():
     data = pd.read_pickle("./resources/feature/feature.pkl")
     data = data.reset_index().set_index("id")
 
-    with_auto_hpo = True
+    with_auto_hpo = False
 
     # 不要な特徴量の排除
     try:
