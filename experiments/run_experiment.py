@@ -10,7 +10,8 @@ def main():
     data = pd.read_pickle("./resources/feature/feature.pkl")
     data = data.reset_index().set_index("id")
 
-    with_auto_hpo = False
+    time_budget = 3600 * 6
+    with_auto_hpo = bool(time_budget)
 
     # 不要な特徴量の排除
     try:
@@ -63,7 +64,7 @@ def main():
     else:
         raise ValueError("valid_type invalid")
 
-    folds = TimeSeriesSplit("date", times=times)
+    folds = TimeSeriesSplit(train["date"], times=times)
     if with_auto_hpo:
         model_params = {
             "seed": 110,
@@ -92,9 +93,9 @@ def main():
 
     run_experiment(
         model_params=model_params,
-        X_train=train.drop(columns="demand"),
+        X_train=train.drop(columns=["demand", "date"]),
         y=train["demand"],
-        X_test=test.drop(columns="demand"),
+        X_test=test.drop(columns=["demand", "date"]),
         cv=folds,
         eval_func=mean_squared_error,
         type_of_target="continuous",

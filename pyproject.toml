@@ -16,7 +16,7 @@ category-encoders = "^2.1.0"
 optuna = "^1.1.0"
 mlflow = "^1.6.0"
 click = "^7.0"
-nyaggle = {git = "https://github.com/tenajima/nyaggle.git", rev = "feat_time_series_split_detector"}
+nyaggle = {git = "https://github.com/tenajima/nyaggle.git", rev = "tenyaggle"}
 
 [tool.poetry.dev-dependencies]
 jupyterlab = "^1.2.6"
