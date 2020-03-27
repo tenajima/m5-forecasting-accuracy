@@ -99,6 +99,10 @@ def output_result(
     )
     fig.savefig(os.path.join(save_dir, "importance.png"))
 
+    with open(os.path.join(save_dir, "scores.txt"), "w") as f:
+        for i, score in enumerate(scores):
+            f.write(f"fold {i}: {score}\n")
+
 
 def tune_params(
     base_param: Dict,
@@ -171,7 +175,7 @@ def main():
     test = data[(data["date"] >= "2016-04-25")]
     train["date"] = pd.to_datetime(train["date"])
 
-    valid_type = "long"  # "long", "short", "ts"
+    valid_type = "short"  # "long", "short", "ts"
 
     if valid_type == "ts":
         from_test_date = date(2016, 4, 25)
@@ -203,38 +207,20 @@ def main():
         raise ValueError("valid_type invalid")
 
     folds = TimeSeriesSplit(train["date"], times=times)
-    if with_auto_hpo:
+    try:
+        model_params = json.load(open("./model_params.json"))
+    except FileNotFoundError:
         model_params = {
-            "objective": "poisson",
+            "objective": "regression",
             "seed": 110,
             "learning_rate": 0.01,
             "n_estimators": 100000,
             "boosting_type": "gbdt",
             "metric": "rmse",
-            "objective": "poisson",
-            "lambda_l2": 0.1,
-            "feature_fraction": 0.9,
-            "bagging_freq": 1,
             "bagging_fraction": 0.75,
-            "objective": "poisson",
+            "bagging_freq": 10,
+            "colsample_bytree": 0.75,
         }
-        print("tuningするよ", model_params)
-    else:
-        try:
-            model_params = json.load(open("./model_params.json"))
-        except FileNotFoundError:
-            model_params = {
-                "objective": "poisson",
-                "seed": 110,
-                "learning_rate": 0.01,
-                "n_estimators": 100000,
-                "boosting_type": "gbdt",
-                "metric": "rmse",
-                "bagging_fraction": 0.75,
-                "bagging_freq": 10,
-                "colsample_bytree": 0.75,
-            }
-        print("tuningしないよ", model_params)
 
     run_experiment(
         params=model_params,
@@ -249,6 +235,5 @@ def main():
 
 if __name__ == "__main__":
     load_dotenv("env")
-    luigi.build([GetFeature()], workers=1, local_scheduler=True)
-
-    main()
+    if luigi.build([GetFeature()], workers=1, local_scheduler=True):
+        main()
