@@ -39,9 +39,9 @@ python-versions = "*"
 version = "1.4.3"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Disable App Nap on OS X 10.9"
-marker = "sys_platform == \"darwin\" or platform_system == \"Darwin\""
+marker = "sys_platform == \"darwin\" or platform_system == \"Darwin\" or python_version >= \"3.3\" and sys_platform == \"darwin\""
 name = "appnope"
 optional = false
 python-versions = "*"
@@ -79,7 +79,7 @@ docs = ["sphinx", "zope.interface"]
 tests = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Specifications for callback functions passed in to an API"
 name = "backcall"
 optional = false
@@ -107,7 +107,7 @@ typed-ast = ">=1.4.0"
 d = ["aiohttp (>=3.3.2)", "aiohttp-cors"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "An easy safelist-based HTML-sanitizing tool."
 name = "bleach"
 optional = false
@@ -239,7 +239,7 @@ wcwidth = "*"
 [[package]]
 category = "main"
 description = "Cross-platform colored terminal text."
-marker = "sys_platform == \"win32\""
+marker = "python_version >= \"3.3\" and sys_platform == \"win32\" or sys_platform == \"win32\""
 name = "colorama"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
@@ -295,7 +295,7 @@ six = ">=1.10.0"
 tabulate = ">=0.7.7"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Decorators for Humans"
 name = "decorator"
 optional = false
@@ -303,7 +303,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "4.4.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "XML bomb protection for Python stdlib modules"
 name = "defusedxml"
 optional = false
@@ -518,7 +518,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.9"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Read metadata from Python packages"
 marker = "python_version < \"3.8\""
 name = "importlib-metadata"
@@ -534,7 +534,7 @@ docs = ["sphinx", "rst.linker"]
 testing = ["packaging", "importlib-resources"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "IPython Kernel for Jupyter"
 name = "ipykernel"
 optional = false
@@ -552,7 +552,7 @@ traitlets = ">=4.1.0"
 test = ["pytest", "pytest-cov", "flaky", "nose"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "IPython: Productive Interactive Computing"
 name = "ipython"
 optional = false
@@ -584,12 +584,33 @@ qtconsole = ["qtconsole"]
 test = ["nose (>=0.10.1)", "requests", "testpath", "pygments", "nbformat", "ipykernel", "numpy (>=1.14)"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Vestigial utilities from IPython"
 name = "ipython-genutils"
 optional = false
 python-versions = "*"
 version = "0.2.0"
+
+[[package]]
+category = "main"
+description = "IPython HTML widgets for Jupyter"
+name = "ipywidgets"
+optional = false
+python-versions = "*"
+version = "7.5.1"
+
+[package.dependencies]
+ipykernel = ">=4.5.1"
+nbformat = ">=4.2.0"
+traitlets = ">=4.3.1"
+widgetsnbextension = ">=3.5.0,<3.6.0"
+
+[package.dependencies.ipython]
+python = ">=3.3"
+version = ">=4.0.0"
+
+[package.extras]
+test = ["pytest (>=3.6.0)", "pytest-cov", "mock"]
 
 [[package]]
 category = "dev"
@@ -614,7 +635,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.1.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "An autocompletion tool for Python that can be used for text editors."
 name = "jedi"
 optional = false
@@ -667,7 +688,7 @@ python-versions = "*"
 version = "0.9.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "An implementation of JSON Schema validation for Python"
 name = "jsonschema"
 optional = false
@@ -689,7 +710,7 @@ format = ["idna", "jsonpointer (>1.13)", "rfc3987", "strict-rfc3339", "webcolors
 format_nongpl = ["idna", "jsonpointer (>1.13)", "webcolors", "rfc3986-validator (>0.1.0)", "rfc3339-validator"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Jupyter protocol implementation and client libraries"
 name = "jupyter-client"
 optional = false
@@ -707,7 +728,7 @@ traitlets = "*"
 test = ["ipykernel", "ipython", "mock", "pytest"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Jupyter core package. A base package on which Jupyter projects rely."
 name = "jupyter-core"
 optional = false
@@ -878,7 +899,7 @@ python-versions = "*"
 version = "0.6.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "The fastest markdown parser in pure Python"
 name = "mistune"
 optional = false
@@ -939,7 +960,7 @@ python-versions = ">=3.5"
 version = "4.7.5"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Converting Jupyter Notebooks"
 name = "nbconvert"
 optional = false
@@ -967,7 +988,7 @@ serve = ["tornado (>=4.0)"]
 test = ["pytest", "pytest-cov", "ipykernel", "jupyter-client (>=5.3.1)", "ipywidgets (>=7)", "pebble", "mock"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "The Jupyter Notebook format"
 name = "nbformat"
 optional = false
@@ -984,7 +1005,7 @@ traitlets = ">=4.1"
 test = ["testpath", "pytest", "pytest-cov"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A web-based notebook environment for interactive computing"
 name = "notebook"
 optional = false
@@ -1045,6 +1066,7 @@ all = ["catboost (>=0.17)", "lightgbm", "xgboost", "torch", "mlflow"]
 reference = "bbad15c7eb2cd91fd8b167c9216035fdc4806a38"
 type = "git"
 url = "https://github.com/tenajima/nyaggle.git"
+
 [[package]]
 category = "main"
 description = "A hyperparameter optimization framework"
@@ -1100,7 +1122,7 @@ pytz = ">=2017.2"
 test = ["pytest (>=4.0.2)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Utilities for writing pandoc filters in python"
 name = "pandocfilters"
 optional = false
@@ -1108,7 +1130,7 @@ python-versions = "*"
 version = "1.4.2"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A Python Parser"
 name = "parso"
 optional = false
@@ -1147,9 +1169,9 @@ python-versions = "*"
 version = "5.4.4"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Pexpect allows easy control of interactive console applications."
-marker = "sys_platform != \"win32\""
+marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\""
 name = "pexpect"
 optional = false
 python-versions = "*"
@@ -1159,7 +1181,7 @@ version = "4.8.0"
 ptyprocess = ">=0.5"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Tiny 'shelve'-like database with concurrency support"
 name = "pickleshare"
 optional = false
@@ -1214,7 +1236,7 @@ flask = "*"
 prometheus_client = "*"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Library for building powerful interactive command lines in Python"
 name = "prompt-toolkit"
 optional = false
@@ -1237,9 +1259,9 @@ setuptools = "*"
 six = ">=1.9"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Run a subprocess in a pseudo terminal"
-marker = "sys_platform != \"win32\" or os_name != \"nt\""
+marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\""
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -1301,7 +1323,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.1.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Pygments is a syntax highlighting package written in Python."
 name = "pygments"
 optional = false
@@ -1346,7 +1368,7 @@ python-versions = "*"
 version = "2.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Persistent/Functional/Immutable data structures"
 name = "pyrsistent"
 optional = false
@@ -1460,7 +1482,7 @@ python-versions = "*"
 version = "227"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python bindings for the winpty library"
 marker = "os_name == \"nt\""
 name = "pywinpty"
@@ -1477,7 +1499,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 version = "5.3"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python bindings for 0MQ"
 name = "pyzmq"
 optional = false
@@ -1600,7 +1622,7 @@ pandas = ">=0.22.0"
 scipy = ">=1.0.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Send file to trash natively under Mac OS X, Windows and Linux."
 name = "send2trash"
 optional = false
@@ -1735,7 +1757,7 @@ version = "0.8.6"
 widechars = ["wcwidth"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Terminals served to xterm.js using Tornado websockets"
 name = "terminado"
 optional = false
@@ -1748,7 +1770,7 @@ pywinpty = ">=0.5"
 tornado = ">=4"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Test utilities for code working with files and commands"
 name = "testpath"
 optional = false
@@ -1816,7 +1838,7 @@ version = "4.43.0"
 dev = ["py-make (>=0.1.0)", "twine", "argopt", "pydoc-markdown"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Traitlets Python config system"
 name = "traitlets"
 optional = false
@@ -1912,7 +1934,7 @@ python-versions = "*"
 version = "0.1.8"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Character encoding aliases for legacy web content"
 name = "webencodings"
 optional = false
@@ -1944,6 +1966,17 @@ watchdog = ["watchdog"]
 
 [[package]]
 category = "main"
+description = "IPython HTML widgets for Jupyter"
+name = "widgetsnbextension"
+optional = false
+python-versions = "*"
+version = "3.5.1"
+
+[package.dependencies]
+notebook = ">=4.4.1"
+
+[[package]]
+category = "main"
 description = "Yet another URL library"
 name = "yarl"
 optional = false
@@ -1955,7 +1988,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 marker = "python_version < \"3.8\""
 name = "zipp"
@@ -1968,7 +2001,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "056691ca8595b65b028add77cac5ab7cbc4bef93368046c8ee921251a6b293a6"
+content-hash = "4227684cbfb844475fa05ef095d46cd12f51c4143ec0aa91d50969e5e05ddc1e"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -2167,6 +2200,10 @@ ipython = [
 ipython-genutils = [
     {file = "ipython_genutils-0.2.0-py2.py3-none-any.whl", hash = "sha256:72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8"},
     {file = "ipython_genutils-0.2.0.tar.gz", hash = "sha256:eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"},
+]
+ipywidgets = [
+    {file = "ipywidgets-7.5.1-py2.py3-none-any.whl", hash = "sha256:13ffeca438e0c0f91ae583dc22f50379b9d6b28390ac7be8b757140e9a771516"},
+    {file = "ipywidgets-7.5.1.tar.gz", hash = "sha256:e945f6e02854a74994c596d9db83444a1850c01648f1574adf144fbbabe05c97"},
 ]
 isort = [
     {file = "isort-4.3.21-py2.py3-none-any.whl", hash = "sha256:6e811fcb295968434526407adb8796944f1988c5b65e8139058f2014cbe100fd"},
@@ -2989,6 +3026,10 @@ websocket-client = [
 werkzeug = [
     {file = "Werkzeug-1.0.0-py2.py3-none-any.whl", hash = "sha256:6dc65cf9091cf750012f56f2cad759fa9e879f511b5ff8685e456b4e3bf90d16"},
     {file = "Werkzeug-1.0.0.tar.gz", hash = "sha256:169ba8a33788476292d04186ab33b01d6add475033dfc07215e6d219cc077096"},
+]
+widgetsnbextension = [
+    {file = "widgetsnbextension-3.5.1-py2.py3-none-any.whl", hash = "sha256:bd314f8ceb488571a5ffea6cc5b9fc6cba0adaf88a9d2386b93a489751938bcd"},
+    {file = "widgetsnbextension-3.5.1.tar.gz", hash = "sha256:079f87d87270bce047512400efd70238820751a11d2d8cb137a5a5bdbaf255c7"},
 ]
 yarl = [
     {file = "yarl-1.4.2-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:3ce3d4f7c6b69c4e4f0704b32eca8123b9c58ae91af740481aa57d7857b5e41b"},
