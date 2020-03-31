@@ -17,6 +17,7 @@ optuna = "^1.1.0"
 mlflow = "^1.6.0"
 click = "^7.0"
 nyaggle = {git = "https://github.com/tenajima/nyaggle.git", rev = "tenyaggle"}
+ipywidgets = "^7.5.1"
 
 [tool.poetry.dev-dependencies]
 jupyterlab = "^1.2.6"

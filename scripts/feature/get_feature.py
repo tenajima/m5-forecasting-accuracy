@@ -76,6 +76,7 @@ class GetFeature(gokart.TaskOnKart):
             # "LongRollingMean",
             # "WeightRollingMean",
             # "GlobalTrend",
+            # "ShortLag",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -629,4 +630,20 @@ class GlobalTrend(Feature):
         data = data.merge(trend[["date", "global_trend"]], on="date", how="left")
 
         data = self.set_index(data[["id", "date", "global_trend"]])
+        self.dump(data)
+
+
+class ShortLag(Feature):
+    """
+    28日シフトしないlag
+    まずは7日のみ
+    """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "demand", "date"]]
+        data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
+        # data["lag_1"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(1))
+        data = data.drop(columns="demand")
+        data = self.set_index(data)
         self.dump(data)

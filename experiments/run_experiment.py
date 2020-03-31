@@ -121,7 +121,7 @@ def tune_params(
         params["early_stopping_rounds"] = 100
 
     best_params, tuning_history = dict(), list()
-    lgb.train(
+    lightgbm_tuner.train(
         params,
         dtrain,
         valid_sets=[dvalid],
@@ -151,7 +151,7 @@ def main():
     data = pd.read_pickle("./resources/feature/feature.pkl")
     data = data.reset_index().set_index("id")
 
-    # time_budget = 3600 * 6
+    # time_budget = 3600 * 4
     time_budget = 0
     with_auto_hpo = bool(time_budget)
 
@@ -211,7 +211,7 @@ def main():
         model_params = json.load(open("./model_params.json"))
     except FileNotFoundError:
         model_params = {
-            "objective": "regression",
+            "objective": "poisson",
             "seed": 110,
             "learning_rate": 0.01,
             "n_estimators": 100000,
@@ -228,7 +228,7 @@ def main():
         y=train["demand"],
         X_test=test.drop(columns=["demand", "date"]),
         cv=folds,
-        eval_func=mean_squared_error,
+        eval_func=lambda y_true, y_pred: mean_squared_error(y_true, y_pred) ** 0.50,
         with_auto_hpo=with_auto_hpo,
     )
 
