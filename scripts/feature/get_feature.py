@@ -107,7 +107,8 @@ class Feature(gokart.TaskOnKart):
 
     index_columns = ["id", "date"]
     predict_column = "demand"
-    to_history_date = "2013-07-17"  # この日までは履歴データとして使う -> 使わない
+    # to_history_date = "2013-07-17"
+    to_history_date = "2015-03-27"
 
     def set_index(self, data: pd.DataFrame) -> pd.DataFrame:
         """
