@@ -169,3 +169,5 @@ experiments/**/*.csv
 # nyaggle & mlflow
 mlruns/
 output/
+
+*.pkl

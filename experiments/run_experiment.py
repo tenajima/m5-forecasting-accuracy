@@ -18,6 +18,7 @@ from sklearn.model_selection import BaseCrossValidator
 
 from nyaggle.validation import TimeSeriesSplit
 from scripts.feature import GetFeature
+from scripts.evaluate.evaluator import Evaluator
 
 
 def run_experiment(
@@ -40,6 +41,7 @@ def run_experiment(
     scores = []
     importance = []
     models = []
+    evaluator = Evaluator(load=True)
 
     for n, (train_idx, valid_idx) in enumerate(cv.split(X_train, y)):
         dtrain = lgb.Dataset(X_train.iloc[train_idx], y.iloc[train_idx])
@@ -51,6 +53,7 @@ def run_experiment(
             valid_names=["train", "test"],
             early_stopping_rounds=100,
             verbose_eval=100,
+            feval=evaluator.feval,
         )
 
         test += (
@@ -60,7 +63,7 @@ def run_experiment(
         oof[valid_idx] = model.predict(
             X_train.iloc[valid_idx], num_iteration=model.best_iteration
         )
-        scores.append(eval_func(y.iloc[valid_idx], oof[valid_idx]))
+        scores.append(evaluator.wrmsse(y.iloc[valid_idx], oof[valid_idx]))
         models.append(model)
 
         importance.append(_get_importance(model, X_train.columns))
@@ -72,7 +75,13 @@ def run_experiment(
         .sort_values("importance", ascending=False)
     )
     test = pd.DataFrame({"demand": test}, index=X_test.index,)
-    output_result(models, test, importance, scores)
+
+    # 1foldのときだけよ
+    if cv.get_n_splits() == 1:
+        valid = pd.DataFrame({"y_true": y.iloc[valid_idx], "preds": oof[valid_idx]})
+        output_result(models, test, importance, scores, valid)
+    else:
+        output_result(models, test, importance, scores)
 
 
 def output_result(
@@ -80,6 +89,7 @@ def output_result(
     test: pd.DataFrame,
     importance: pd.DataFrame,
     scores: List[float],
+    valid=None,
 ):
     save_dir = os.path.join("./output", datetime.now().strftime(r"%Y%m%d_%H%M%S"))
     os.makedirs(save_dir, exist_ok=True)
@@ -102,6 +112,9 @@ def output_result(
     with open(os.path.join(save_dir, "scores.txt"), "w") as f:
         for i, score in enumerate(scores):
             f.write(f"fold {i}: {score}\n")
+
+    if valid is not None:
+        valid.to_csv(os.path.join(save_dir, "oof.csv"))
 
 
 def tune_params(
