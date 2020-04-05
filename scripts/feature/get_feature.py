@@ -77,6 +77,7 @@ class GetFeature(gokart.TaskOnKart):
             # "WeightRollingMean",
             # "GlobalTrend",
             # "ShortLag",
+            # "ShortRollingLag",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -643,8 +644,35 @@ class ShortLag(Feature):
     def run(self):
         data = self.load("data")
         data = data[["id", "demand", "date"]]
-        data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
+        for i in range(1, 8):
+            print("Shifting:", i)
+            data["lag_" + str(i)] = data.groupby(["id"])["demand"].transform(
+                lambda x: x.shift(i)
+            )
+        # data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
         # data["lag_1"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(1))
+        data = data.drop(columns="demand")
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class ShortRollingLag(Feature):
+    """
+    28日シフトしないlag
+    まずは7日のみ
+    """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "demand", "date"]]
+        for i in [14, 30, 60]:
+            print("Rolling period:", i)
+            data["rolling_mean_" + str(i)] = data.groupby(["id"])["demand"].transform(
+                lambda x: x.shift(1).rolling(i).mean()
+            )
+            data["rolling_std_" + str(i)] = data.groupby(["id"])["demand"].transform(
+                lambda x: x.shift(1).rolling(i).std()
+            )
         data = data.drop(columns="demand")
         data = self.set_index(data)
         self.dump(data)

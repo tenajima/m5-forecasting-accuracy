@@ -63,7 +63,7 @@ def run_experiment(
         oof[valid_idx] = model.predict(
             X_train.iloc[valid_idx], num_iteration=model.best_iteration
         )
-        scores.append(evaluator.wrmsse(y.iloc[valid_idx], oof[valid_idx]))
+        scores.append(evaluator.wrmsse(y.iloc[valid_idx].values, oof[valid_idx]))
         models.append(model)
 
         importance.append(_get_importance(model, X_train.columns))
