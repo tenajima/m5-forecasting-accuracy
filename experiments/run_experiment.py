@@ -44,7 +44,13 @@ def run_experiment(
     evaluator = Evaluator(load=True)
 
     for n, (train_idx, valid_idx) in enumerate(cv.split(X_train, y)):
-        dtrain = lgb.Dataset(X_train.iloc[train_idx], y.iloc[train_idx])
+        if "weight" in X_train.columns:
+            weight = X_train["weight"].iloc[train_idx]
+            del X_train["weight"]
+        else:
+            weight = None
+
+        dtrain = lgb.Dataset(X_train.iloc[train_idx], y.iloc[train_idx], weight=weight)
         dvalid = lgb.Dataset(X_train.iloc[valid_idx], y.iloc[valid_idx])
         model = lgb.train(
             params,
@@ -164,7 +170,7 @@ def main():
     data = pd.read_pickle("./resources/feature/feature.pkl")
     data = data.reset_index().set_index("id")
 
-    # time_budget = 3600 * 4
+    # time_budget = 3600 * 5
     time_budget = 0
     with_auto_hpo = bool(time_budget)
 
@@ -187,6 +193,9 @@ def main():
     train = data[data["date"] < "2016-04-25"]
     test = data[(data["date"] >= "2016-04-25")]
     train["date"] = pd.to_datetime(train["date"])
+
+    if "weight" in test.columns:
+        test = test.drop(columns="weight")
 
     valid_type = "short"  # "long", "short", "ts"
 
@@ -224,7 +233,7 @@ def main():
         model_params = json.load(open("./model_params.json"))
     except FileNotFoundError:
         model_params = {
-            "objective": "poisson",
+            "objective": "rmse",
             "seed": 110,
             "learning_rate": 0.01,
             "n_estimators": 100000,

@@ -62,6 +62,7 @@ class GetFeature(gokart.TaskOnKart):
         ff = FeatureFactory()
         features = [
             # "StoreId",
+            "Scale",
             "Target",
             "SimpleKernel",
             "Origin",
@@ -142,6 +143,19 @@ class Target(Feature):
         self.dump(data)
 
 
+class Scale(Feature):
+    def requires(self):
+        return Target()
+
+    def run(self):
+        target = self.load().reset_index()[["id", "date"]]
+        scale = pd.read_csv("scale.csv")
+
+        result = target.merge(scale, on="id", how="left")
+        result = self.set_index(result)
+        self.dump(result)
+
+
 class SimpleKernel(Feature):
     """
     simple feature from kernel(https://www.kaggle.com/ragnar123/very-fst-model)
@@ -170,12 +184,6 @@ class SimpleKernel(Feature):
         data["rolling_mean_t30"] = data.groupby(["id"])["demand"].transform(
             lambda x: x.shift(28).rolling(30).mean()
         )
-        data["rolling_mean_t90"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(90).mean()
-        )
-        data["rolling_mean_t180"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(180).mean()
-        )
         data["rolling_std_t30"] = data.groupby(["id"])["demand"].transform(
             lambda x: x.shift(28).rolling(30).std()
         )
@@ -185,7 +193,21 @@ class SimpleKernel(Feature):
         data["rolling_kurt_t30"] = data.groupby(["id"])["demand"].transform(
             lambda x: x.shift(28).rolling(30).kurt()
         )
-
+        data["rolling_mean_t60"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(60).mean()
+        )
+        data["rolling_mean_t90"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(90).mean()
+        )
+        data["rolling_std_t90"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(90).std()
+        )
+        data["rolling_mean_t180"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(180).mean()
+        )
+        data["rolling_std_t180"] = data.groupby(["id"])["demand"].transform(
+            lambda x: x.shift(28).rolling(180).std()
+        )
         # price features
         print("price calc")
         data["lag_price_t1"] = data.groupby(["id"])["sell_price"].transform(
@@ -644,13 +666,13 @@ class ShortLag(Feature):
     def run(self):
         data = self.load("data")
         data = data[["id", "demand", "date"]]
-        for i in range(1, 8):
-            print("Shifting:", i)
-            data["lag_" + str(i)] = data.groupby(["id"])["demand"].transform(
-                lambda x: x.shift(i)
-            )
-        # data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
-        # data["lag_1"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(1))
+        # for i in range(1, 8):
+        #     print("Shifting:", i)
+        #     data["lag_" + str(i)] = data.groupby(["id"])["demand"].transform(
+        #         lambda x: x.shift(i)
+        #     )
+        data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
+        data["lag_1"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(1))
         data = data.drop(columns="demand")
         data = self.set_index(data)
         self.dump(data)
@@ -665,7 +687,8 @@ class ShortRollingLag(Feature):
     def run(self):
         data = self.load("data")
         data = data[["id", "demand", "date"]]
-        for i in [14, 30, 60]:
+        # for i in [14, 30, 60]:
+        for i in [7]:
             print("Rolling period:", i)
             data["rolling_mean_" + str(i)] = data.groupby(["id"])["demand"].transform(
                 lambda x: x.shift(1).rolling(i).mean()
