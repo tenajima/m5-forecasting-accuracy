@@ -18,6 +18,23 @@ class DataForTrain:
     test: pd.DataFrame
 
 
+def get_short_lag_feature(data: pd.DataFrame):
+    lags = [7, 28]
+    lag_cols = [f"lag_{lag}" for lag in lags]
+    for lag, lag_col in zip(lags, lag_cols):
+        data[lag_col] = data[["id", "demand"]].groupby("id")["demand"].shift(lag)
+
+    wins = [7, 28]
+    for win in wins:
+        for lag, lag_col in zip(lags, lag_cols):
+            data[f"rmean_{lag}_{win}"] = (
+                data[["id", lag_col]]
+                .groupby("id")[lag_col]
+                .transform(lambda x: x.rolling(win).mean())
+            )
+    return data
+
+
 class FeatureFactory:
     def get_feature_instance(self, feature_name: str) -> gokart.TaskOnKart:
 
@@ -62,13 +79,14 @@ class GetFeature(gokart.TaskOnKart):
         ff = FeatureFactory()
         features = [
             # "StoreId",
-            "Scale",
+            # "Scale",
+            "ShortLag",
             "Target",
-            "SimpleKernel",
             "Origin",
             "SimpleTime",
             "SimpleLabelEncode",
-            "Holiday",
+            # "Holiday",
+            "SellPrice",
             # "AggItemIdMean",
             # "AggDeptIdMean",
             # "AggCatIdMean",
@@ -77,8 +95,6 @@ class GetFeature(gokart.TaskOnKart):
             # "LongRollingMean",
             # "WeightRollingMean",
             # "GlobalTrend",
-            # "ShortLag",
-            # "ShortRollingLag",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -109,8 +125,8 @@ class Feature(gokart.TaskOnKart):
 
     index_columns = ["id", "date"]
     predict_column = "demand"
-    # to_history_date = "2013-07-17"
-    to_history_date = "2015-03-27"
+    to_history_date = "2013-06-01"
+    # to_history_date = "2015-03-27"
 
     def set_index(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -156,84 +172,28 @@ class Scale(Feature):
         self.dump(result)
 
 
-class SimpleKernel(Feature):
+class ShortLag(Feature):
     """
     simple feature from kernel(https://www.kaggle.com/ragnar123/very-fst-model)
     """
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "demand", "date", "sell_price"]]
+        data = data[["id", "date", "demand"]]
 
-        print("lag calc")
-        data["lag_t28"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28)
-        )
-        data["lag_t29"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(29)
-        )
-        data["lag_t30"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(30)
-        )
-        data["rolling_mean_t7"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(7).mean()
-        )
-        data["rolling_std_t7"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(7).std()
-        )
-        data["rolling_mean_t30"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(30).mean()
-        )
-        data["rolling_std_t30"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(30).std()
-        )
-        data["rolling_skew_t30"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(30).skew()
-        )
-        data["rolling_kurt_t30"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(30).kurt()
-        )
-        data["rolling_mean_t60"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(60).mean()
-        )
-        data["rolling_mean_t90"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(90).mean()
-        )
-        data["rolling_std_t90"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(90).std()
-        )
-        data["rolling_mean_t180"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(180).mean()
-        )
-        data["rolling_std_t180"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28).rolling(180).std()
-        )
-        # price features
-        print("price calc")
-        data["lag_price_t1"] = data.groupby(["id"])["sell_price"].transform(
-            lambda x: x.shift(1)
-        )
-        data["price_change_t1"] = (data["lag_price_t1"] - data["sell_price"]) / (
-            data["lag_price_t1"]
-        )
-        data["rolling_price_max_t365"] = data.groupby(["id"])["sell_price"].transform(
-            lambda x: x.shift(1).rolling(365).max()
-        )
-        data["price_change_t365"] = (
-            data["rolling_price_max_t365"] - data["sell_price"]
-        ) / (data["rolling_price_max_t365"])
-        data["rolling_price_std_t7"] = data.groupby(["id"])["sell_price"].transform(
-            lambda x: x.rolling(7).std()
-        )
-        data["rolling_price_std_t30"] = data.groupby(["id"])["sell_price"].transform(
-            lambda x: x.rolling(30).std()
-        )
-        data.drop(
-            ["rolling_price_max_t365", "lag_price_t1", "demand"], inplace=True, axis=1
-        )
+        data = get_short_lag_feature(data)
 
-        # sell_priceのNaN埋め
+        data = data.drop(columns="demand")
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class SellPrice(Feature):
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "date", "sell_price"]]
         data["sell_price"] = data["sell_price"].fillna(-999)
+
         data = self.set_index(data)
         self.dump(data)
 
@@ -243,7 +203,7 @@ class Origin(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "date", "snap_CA", "snap_TX", "snap_WI", "wm_yr_wk"]]
+        data = data[["id", "date", "snap_CA", "snap_TX", "snap_WI"]]
         data = self.set_index(data)
         self.dump(data)
 
@@ -275,6 +235,7 @@ class SimpleTime(Feature):
         data["week"] = data["tmp"].dt.week
         data["day"] = data["tmp"].dt.day
         data["dayofweek"] = data["tmp"].dt.dayofweek
+        data["quater"] = data["tmp"].dt.quarter
 
         data = data[["id", "date", "year", "month", "week", "day", "dayofweek"]]
 
@@ -654,48 +615,4 @@ class GlobalTrend(Feature):
         data = data.merge(trend[["date", "global_trend"]], on="date", how="left")
 
         data = self.set_index(data[["id", "date", "global_trend"]])
-        self.dump(data)
-
-
-class ShortLag(Feature):
-    """
-    28日シフトしないlag
-    まずは7日のみ
-    """
-
-    def run(self):
-        data = self.load("data")
-        data = data[["id", "demand", "date"]]
-        # for i in range(1, 8):
-        #     print("Shifting:", i)
-        #     data["lag_" + str(i)] = data.groupby(["id"])["demand"].transform(
-        #         lambda x: x.shift(i)
-        #     )
-        data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
-        data["lag_1"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(1))
-        data = data.drop(columns="demand")
-        data = self.set_index(data)
-        self.dump(data)
-
-
-class ShortRollingLag(Feature):
-    """
-    28日シフトしないlag
-    まずは7日のみ
-    """
-
-    def run(self):
-        data = self.load("data")
-        data = data[["id", "demand", "date"]]
-        # for i in [14, 30, 60]:
-        for i in [7]:
-            print("Rolling period:", i)
-            data["rolling_mean_" + str(i)] = data.groupby(["id"])["demand"].transform(
-                lambda x: x.shift(1).rolling(i).mean()
-            )
-            data["rolling_std_" + str(i)] = data.groupby(["id"])["demand"].transform(
-                lambda x: x.shift(1).rolling(i).std()
-            )
-        data = data.drop(columns="demand")
-        data = self.set_index(data)
         self.dump(data)

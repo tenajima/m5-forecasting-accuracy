@@ -233,9 +233,10 @@ def main():
         model_params = json.load(open("./model_params.json"))
     except FileNotFoundError:
         model_params = {
-            "objective": "rmse",
+            "objective": "poisson",
             "seed": 110,
-            "learning_rate": 0.01,
+            # "learning_rate": 0.01,
+            "learning_rate": 0.075,
             "n_estimators": 100000,
             "boosting_type": "gbdt",
             "metric": "rmse",
