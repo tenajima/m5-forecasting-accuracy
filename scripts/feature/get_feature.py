@@ -107,10 +107,10 @@ class GetFeature(gokart.TaskOnKart):
 class Feature(gokart.TaskOnKart):
     """ 基底クラス """
 
-    index_columns = ["id", "date"]
-    predict_column = "demand"
+    index_columns = ["id", "d"]
+    predict_column = "sales"
     # to_history_date = "2013-07-17"
-    to_history_date = "2015-03-27"
+    to_history_date = 1518
 
     def set_index(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -122,7 +122,7 @@ class Feature(gokart.TaskOnKart):
         Returns:
             pd.DataFrame:
         """
-        data = data.query(f"date > '{self.to_history_date}'")
+        data = data.query(f"d > {self.to_history_date}")
         data = data.set_index(self.index_columns)
         data = reduce_mem_usage(data)
         return data
@@ -138,7 +138,7 @@ class Target(Feature):
     def run(self):
         data = self.load("data")
         print("loaded")
-        data = data[["id", "demand", "date"]]
+        data = data[["id", "sales", "d"]]
         data = self.set_index(data)
         self.dump(data)
 
@@ -148,7 +148,7 @@ class Scale(Feature):
         return Target()
 
     def run(self):
-        target = self.load().reset_index()[["id", "date"]]
+        target = self.load().reset_index()[["id", "d"]]
         scale = pd.read_csv("scale.csv")
 
         result = target.merge(scale, on="id", how="left")
@@ -163,49 +163,43 @@ class SimpleKernel(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "demand", "date", "sell_price"]]
+        data = data[["id", "sales", "d", "sell_price"]]
 
         print("lag calc")
-        data["lag_t28"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(28)
-        )
-        data["lag_t29"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(29)
-        )
-        data["lag_t30"] = data.groupby(["id"])["demand"].transform(
-            lambda x: x.shift(30)
-        )
-        data["rolling_mean_t7"] = data.groupby(["id"])["demand"].transform(
+        data["lag_t28"] = data.groupby(["id"])["sales"].transform(lambda x: x.shift(28))
+        data["lag_t29"] = data.groupby(["id"])["sales"].transform(lambda x: x.shift(29))
+        data["lag_t30"] = data.groupby(["id"])["sales"].transform(lambda x: x.shift(30))
+        data["rolling_mean_t7"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(7).mean()
         )
-        data["rolling_std_t7"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_std_t7"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(7).std()
         )
-        data["rolling_mean_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_mean_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(30).mean()
         )
-        data["rolling_std_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_std_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(30).std()
         )
-        data["rolling_skew_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_skew_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(30).skew()
         )
-        data["rolling_kurt_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_kurt_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(30).kurt()
         )
-        data["rolling_mean_t60"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_mean_t60"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(60).mean()
         )
-        data["rolling_mean_t90"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_mean_t90"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(90).mean()
         )
-        data["rolling_std_t90"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_std_t90"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(90).std()
         )
-        data["rolling_mean_t180"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_mean_t180"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(180).mean()
         )
-        data["rolling_std_t180"] = data.groupby(["id"])["demand"].transform(
+        data["rolling_std_t180"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(28).rolling(180).std()
         )
         # price features
@@ -229,11 +223,40 @@ class SimpleKernel(Feature):
             lambda x: x.rolling(30).std()
         )
         data.drop(
-            ["rolling_price_max_t365", "lag_price_t1", "demand"], inplace=True, axis=1
+            ["rolling_price_max_t365", "lag_price_t1", "sales"], inplace=True, axis=1
         )
 
         # sell_priceのNaN埋め
         data["sell_price"] = data["sell_price"].fillna(-999)
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class SeveralLagFeature(Feature):
+    """
+    simple feature from kernel(https://www.kaggle.com/ragnar123/very-fst-model)
+    """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "sales", "d"]]
+
+        def shift_lag_feature(shift: int):
+            data[f"shift_{shift}rolling_mean_t7"] = data.groupby(["id"])[
+                "sales"
+            ].transform(lambda x: x.shift(shift).rolling(7).mean())
+            data[f"shift_{shift}rolling_mean_t28"] = data.groupby(["id"])[
+                "sales"
+            ].transform(lambda x: x.shift(shift).rolling(28).mean())
+            data[f"shift_{shift}rolling_mean_t56"] = data.groupby(["id"])[
+                "sales"
+            ].transform(lambda x: x.shift(shift).rolling(56).mean())
+
+        for i in range(1, 28):
+            print("day ", i)
+            shift_lag_feature(i)
+
+        data = data.drop(columns="sales")
         data = self.set_index(data)
         self.dump(data)
 
@@ -243,7 +266,7 @@ class Origin(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "date", "snap_CA", "snap_TX", "snap_WI", "wm_yr_wk"]]
+        data = data[["id", "d", "snap_CA", "snap_TX", "snap_WI", "wm_yr_wk"]]
         data = self.set_index(data)
         self.dump(data)
 
@@ -256,7 +279,7 @@ class StoreId(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "date", "store_id"]]
+        data = data[["id", "d", "store_id"]]
         encoder = LabelEncoder()
         data["store_id"] = encoder.fit_transform(data["store_id"])
         data = self.set_index(data)
@@ -266,17 +289,17 @@ class StoreId(Feature):
 class SimpleTime(Feature):
     def run(self):
         data = self.load("data")
-        data = data[["id", "date"]]
+        data = data[["id", "d"]]
 
         print("date calculating...")
-        data["tmp"] = pd.to_datetime(data["date"])
+        data["tmp"] = pd.to_datetime(data["d"])
         data["year"] = data["tmp"].dt.year
         data["month"] = data["tmp"].dt.month
         data["week"] = data["tmp"].dt.week
         data["day"] = data["tmp"].dt.day
         data["dayofweek"] = data["tmp"].dt.dayofweek
 
-        data = data[["id", "date", "year", "month", "week", "day", "dayofweek"]]
+        data = data[["id", "d", "year", "month", "week", "day", "dayofweek"]]
 
         data = self.set_index(data)
         self.dump(data)
@@ -314,12 +337,12 @@ class HistoricalDemandAggByItem(Feature):
     """ 履歴のitem_idに関するdemandの統計特徴量 """
 
     def run(self):
-        data = self.load("data")[["id", "date", "demand"] + self.groupby_key]
+        data = self.load("data")[["id", "d", "sales"] + self.groupby_key]
         history = data.query(f"date <= '{self.to_history_date}'").copy()
         data = data.query(f"date > '{self.to_history_date}'")
 
         history = history.groupby(self.groupby_key).agg(
-            {"demand": ["sum", "max", "std"]}
+            {"sales": ["sum", "max", "std"]}
         )
         columns = [
             "history_" + "_".join(self.groupby_key) + "_" + col[0] + "_" + col[1]
@@ -329,7 +352,7 @@ class HistoricalDemandAggByItem(Feature):
 
         data = data.merge(history, on=self.groupby_key)
 
-        data = data.drop(columns=["demand"] + self.groupby_key)
+        data = data.drop(columns=["sales"] + self.groupby_key)
         data = self.set_index(data)
         self.dump(data)
 
@@ -380,14 +403,14 @@ class HistoricalDemandAggByItemMonth(Feature):
     target_columns = ["item_id"]
 
     def run(self):
-        data = self.load("data")[["id", "date", "demand"] + self.target_columns]
+        data = self.load("data")[["id", "d", "sales"] + self.target_columns]
         # yyyy-mm-ddのmmの部分だけ取り出す
-        data["month"] = data["date"].str[5:7]
+        data["month"] = data["d"].str[5:7]
         history = data.query(f"date <= '{self.to_history_date}'").copy()
         data = data.query(f"date > '{self.to_history_date}'")
 
         groupby_key = ["month"] + self.target_columns
-        history = history.groupby(groupby_key).agg({"demand": ["sum", "max", "std"]})
+        history = history.groupby(groupby_key).agg({"sales": ["sum", "max", "std"]})
         columns = [
             "history_" + "_".join(groupby_key) + "_" + col[0] + "_" + col[1]
             for col in history.columns.values
@@ -396,7 +419,7 @@ class HistoricalDemandAggByItemMonth(Feature):
 
         data = data.merge(history, on=groupby_key)
 
-        data = data.drop(columns=["demand"] + groupby_key)
+        data = data.drop(columns=["sales"] + groupby_key)
         data = self.set_index(data)
         self.dump(data)
 
@@ -420,14 +443,14 @@ class HistoricalDemandAggByStateMonth(HistoricalDemandAggByItemMonth):
 class Holiday(Feature):
     def run(self):
         calendar = pd.read_csv(
-            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["date"]
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d"]
         )
 
         # 前の日、休日が休日か見るために頭とお尻にくっつける
         calendar.loc[calendar.shape[0]] = "2011-01-28"
         calendar.loc[calendar.shape[0]] = "2016-06-20"
-        calendar = calendar.sort_values("date").reset_index(drop=True)
-        calendar["datetime"] = pd.to_datetime(calendar["date"])
+        calendar = calendar.sort_values("d").reset_index(drop=True)
+        calendar["datetime"] = pd.to_datetime(calendar["d"])
 
         calendar["dayofweek"] = calendar["datetime"].dt.dayofweek
         calendar["is_weekend"] = calendar["dayofweek"].isin([5, 6]).astype(int)
@@ -448,8 +471,8 @@ class Holiday(Feature):
         del calendar["tmp"]
         del calendar["datetime"], calendar["dayofweek"]
 
-        data = self.load("data")[["id", "date"]]
-        data = data.merge(calendar, on="date")
+        data = self.load("data")[["id", "d"]]
+        data = data.merge(calendar, on="d")
         data = self.set_index(data)
         self.dump(data)
 
@@ -459,62 +482,62 @@ class AggItemIdMean(Feature):
     groupby_key = ["item_id"]
 
     def run(self):
-        data = self.load("data")[["id", "date", "demand"] + self.groupby_key]
+        data = self.load("data")[["id", "d", "sales"] + self.groupby_key]
 
-        group = data.groupby(["date"] + self.groupby_key)[["demand"]].mean()
+        group = data.groupby(["d"] + self.groupby_key)[["sales"]].mean()
 
         group["agg_mean_" + "_".join(self.groupby_key) + "_lag_t28"] = group.groupby(
             self.groupby_key
-        )["demand"].transform(lambda x: x.shift(28))
+        )["sales"].transform(lambda x: x.shift(28))
 
         group["agg_mean_" + "_".join(self.groupby_key) + "_lag_t29"] = group.groupby(
             self.groupby_key
-        )["demand"].transform(lambda x: x.shift(29))
+        )["sales"].transform(lambda x: x.shift(29))
 
         group["agg_mean_" + "_".join(self.groupby_key) + "_lag_t30"] = group.groupby(
             self.groupby_key
-        )["demand"].transform(lambda x: x.shift(30))
+        )["sales"].transform(lambda x: x.shift(30))
 
         group[
             "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t7"
-        ] = group.groupby(self.groupby_key)["demand"].transform(
+        ] = group.groupby(self.groupby_key)["sales"].transform(
             lambda x: x.shift(28).rolling(7).mean()
         )
 
         group[
             "agg_mean_" + "_".join(self.groupby_key) + "_rolling_std_t7"
-        ] = group.groupby(self.groupby_key)["demand"].transform(
+        ] = group.groupby(self.groupby_key)["sales"].transform(
             lambda x: x.shift(28).rolling(7).std()
         )
 
         group[
             "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t30"
-        ] = group.groupby(self.groupby_key)["demand"].transform(
+        ] = group.groupby(self.groupby_key)["sales"].transform(
             lambda x: x.shift(28).rolling(30).mean()
         )
 
         group[
             "agg_mean_" + "_".join(self.groupby_key) + "_rolling_std_t30"
-        ] = group.groupby(self.groupby_key)["demand"].transform(
+        ] = group.groupby(self.groupby_key)["sales"].transform(
             lambda x: x.shift(28).rolling(30).std()
         )
 
         group[
             "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t90"
-        ] = group.groupby(self.groupby_key)["demand"].transform(
+        ] = group.groupby(self.groupby_key)["sales"].transform(
             lambda x: x.shift(28).rolling(90).mean()
         )
 
         group[
             "agg_mean_" + "_".join(self.groupby_key) + "_rolling_mean_t180"
-        ] = group.groupby(self.groupby_key)["demand"].transform(
+        ] = group.groupby(self.groupby_key)["sales"].transform(
             lambda x: x.shift(28).rolling(180).mean()
         )
 
-        group = group.drop(columns="demand")
+        group = group.drop(columns="sales")
 
-        data = data.merge(group, on=["date"] + self.groupby_key)
-        data = data.drop(columns=["demand"] + self.groupby_key)
+        data = data.merge(group, on=["d"] + self.groupby_key)
+        data = data.drop(columns=["sales"] + self.groupby_key)
         data = self.set_index(data)
         self.dump(data)
 
@@ -538,9 +561,9 @@ class AggStateIdMean(AggItemIdMean):
 class DaysDiff(Feature):
     def run(self):
         calendar = pd.read_csv(
-            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["date"]
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d"]
         )
-        calendar["datetime"] = pd.to_datetime(calendar["date"])
+        calendar["datetime"] = pd.to_datetime(calendar["d"])
         calendar["days_ago"] = (
             pd.to_datetime("2016-03-28") - calendar["datetime"]
         ).dt.days
@@ -560,8 +583,8 @@ class DaysDiff(Feature):
         )
         calendar = calendar.drop(columns="datetime")
 
-        data = self.load("data")[["id", "date"]]
-        data = data.merge(calendar, on="date")
+        data = self.load("data")[["id", "d"]]
+        data = data.merge(calendar, on="d")
         print(data.head())
         data = self.set_index(data)
 
@@ -614,21 +637,21 @@ class WeightRollingMean(Feature):
 class LongRollingMean(Feature):
     def run(self):
         data = self.load("data")
-        data = data[["id", "demand", "date"]]
+        data = data[["id", "sales", "d"]]
 
-        data["rolling365_mean_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling365_mean_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(365 - 15).rolling(30).mean()
         )
-        data["rolling730_mean_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling730_mean_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(730 - 15).rolling(30).mean()
         )
-        data["rolling1095_mean_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling1095_mean_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(1095 - 15).rolling(30).mean()
         )
-        data["rolling1460_mean_t30"] = data.groupby(["id"])["demand"].transform(
+        data["rolling1460_mean_t30"] = data.groupby(["id"])["sales"].transform(
             lambda x: x.shift(1460 - 15).rolling(30).mean()
         )
-        data = data.drop(columns="demand")
+        data = data.drop(columns="sales")
         data = self.set_index(data)
         self.dump(data)
 
@@ -638,22 +661,22 @@ class GlobalTrend(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "demand", "date"]]
-        trend = data.groupby("date")[["demand"]].sum().copy()
+        data = data[["id", "sales", "d"]]
+        trend = data.groupby("d")[["sales"]].sum().copy()
         trend = (
             trend.reset_index()
             .reset_index()
             .rename(columns={"index": "day"})
-            .set_index("date")
+            .set_index("d")
         )
 
         train = trend[trend.index < "2016-03-28"]
-        p = np.poly1d(np.polyfit(train["day"], train["demand"], 3))
+        p = np.poly1d(np.polyfit(train["day"], train["sales"], 3))
         trend["global_trend"] = p(trend["day"])
         trend = trend.reset_index()
-        data = data.merge(trend[["date", "global_trend"]], on="date", how="left")
+        data = data.merge(trend[["d", "global_trend"]], on="d", how="left")
 
-        data = self.set_index(data[["id", "date", "global_trend"]])
+        data = self.set_index(data[["id", "d", "global_trend"]])
         self.dump(data)
 
 
@@ -665,15 +688,15 @@ class ShortLag(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "demand", "date"]]
+        data = data[["id", "sales", "d"]]
         # for i in range(1, 8):
         #     print("Shifting:", i)
-        #     data["lag_" + str(i)] = data.groupby(["id"])["demand"].transform(
+        #     data["lag_" + str(i)] = data.groupby(["id"])["sales"].transform(
         #         lambda x: x.shift(i)
         #     )
-        data["lag_7"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(7))
-        data["lag_1"] = data.groupby(["id"])["demand"].transform(lambda x: x.shift(1))
-        data = data.drop(columns="demand")
+        data["lag_7"] = data.groupby(["id"])["sales"].transform(lambda x: x.shift(7))
+        data["lag_1"] = data.groupby(["id"])["sales"].transform(lambda x: x.shift(1))
+        data = data.drop(columns="sales")
         data = self.set_index(data)
         self.dump(data)
 
@@ -686,16 +709,16 @@ class ShortRollingLag(Feature):
 
     def run(self):
         data = self.load("data")
-        data = data[["id", "demand", "date"]]
+        data = data[["id", "sales", "d"]]
         # for i in [14, 30, 60]:
         for i in [7]:
             print("Rolling period:", i)
-            data["rolling_mean_" + str(i)] = data.groupby(["id"])["demand"].transform(
+            data["rolling_mean_" + str(i)] = data.groupby(["id"])["sales"].transform(
                 lambda x: x.shift(1).rolling(i).mean()
             )
-            data["rolling_std_" + str(i)] = data.groupby(["id"])["demand"].transform(
+            data["rolling_std_" + str(i)] = data.groupby(["id"])["sales"].transform(
                 lambda x: x.shift(1).rolling(i).std()
             )
-        data = data.drop(columns="demand")
+        data = data.drop(columns="sales")
         data = self.set_index(data)
         self.dump(data)
