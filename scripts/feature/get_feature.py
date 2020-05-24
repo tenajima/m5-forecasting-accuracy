@@ -61,24 +61,13 @@ class GetFeature(gokart.TaskOnKart):
     def requires(self):
         ff = FeatureFactory()
         features = [
-            # "StoreId",
-            "Scale",
             "Target",
             "SimpleKernel",
+            "SeveralLagFeature",
             "Origin",
             "SimpleTime",
             "SimpleLabelEncode",
-            "Holiday",
-            # "AggItemIdMean",
-            # "AggDeptIdMean",
-            # "AggCatIdMean",
-            # "AggStoreIdMean",
-            # "AggStateIdMean",
-            # "LongRollingMean",
-            # "WeightRollingMean",
-            # "GlobalTrend",
-            # "ShortLag",
-            # "ShortRollingLag",
+            # "Holiday",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -299,7 +288,7 @@ class SimpleTime(Feature):
         data["day"] = data["tmp"].dt.day
         data["dayofweek"] = data["tmp"].dt.dayofweek
 
-        data = data[["id", "d", "year", "month", "week", "day", "dayofweek"]]
+        data = data[["id", "d", "month", "week", "day", "dayofweek"]]
 
         data = self.set_index(data)
         self.dump(data)
