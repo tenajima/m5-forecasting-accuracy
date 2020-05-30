@@ -1,4 +1,6 @@
+import glob
 import inspect
+import os
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -231,19 +233,31 @@ class SeveralLagFeature(Feature):
         data = data[["id", "sales", "d"]]
 
         def shift_lag_feature(shift: int):
-            data[f"shift_{shift}rolling_mean_t7"] = data.groupby(["id"])[
+            data[f"shift_{shift}_rolling_mean_t7"] = data.groupby(["id"])[
                 "sales"
             ].transform(lambda x: x.shift(shift).rolling(7).mean())
-            data[f"shift_{shift}rolling_mean_t28"] = data.groupby(["id"])[
+            data[f"shift_{shift}_rolling_mean_t28"] = data.groupby(["id"])[
                 "sales"
             ].transform(lambda x: x.shift(shift).rolling(28).mean())
-            data[f"shift_{shift}rolling_mean_t56"] = data.groupby(["id"])[
+            data[f"shift_{shift}_rolling_mean_t56"] = data.groupby(["id"])[
                 "sales"
             ].transform(lambda x: x.shift(shift).rolling(56).mean())
 
-        for i in range(1, 28):
+        tmp_file = glob.glob("./tmp_feature_*.pkl")
+        if tmp_file:
+            file_name = tmp_file[0]
+            restart = int(file_name.split("_")[-1].split(".")[0]) + 1
+            print("reload ", file_name)
+            data = pd.read_pickle(file_name)
+        else:
+            restart = 1
+
+        for i in range(restart, 28):
             print("day ", i)
             shift_lag_feature(i)
+            data.to_pickle(f"./tmp_feature_{i}.pkl")
+            if i != 1:
+                os.remove(f"./tmp_feature_{i - 1}.pkl")
 
         data = data.drop(columns="sales")
         data = self.set_index(data)
@@ -278,10 +292,10 @@ class StoreId(Feature):
 class SimpleTime(Feature):
     def run(self):
         data = self.load("data")
-        data = data[["id", "d"]]
+        data = data[["id", "d", "date"]]
 
         print("date calculating...")
-        data["tmp"] = pd.to_datetime(data["d"])
+        data["tmp"] = pd.to_datetime(data["date"])
         data["year"] = data["tmp"].dt.year
         data["month"] = data["tmp"].dt.month
         data["week"] = data["tmp"].dt.week
