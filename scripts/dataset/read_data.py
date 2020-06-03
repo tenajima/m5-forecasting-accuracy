@@ -32,7 +32,7 @@ class ReadAndTransformData(gokart.TaskOnKart):
             sales_train_validation,
             id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],
             var_name="day",
-            value_name="demand",
+            value_name="sales",
         )
         print(
             "Melted sales train validation has {} rows and {} columns".format(
@@ -128,13 +128,13 @@ class ReadAndTransformData(gokart.TaskOnKart):
             test1,
             id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],
             var_name="day",
-            value_name="demand",
+            value_name="sales",
         )
         test2 = pd.melt(
             test2,
             id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],
             var_name="day",
-            value_name="demand",
+            value_name="sales",
         )
 
         sales_train_validation["part"] = "train"
@@ -145,6 +145,8 @@ class ReadAndTransformData(gokart.TaskOnKart):
 
         del sales_train_validation, test1, test2
 
+        data = data.loc[40500000:]
+
         # drop some calendar features
         calendar = pd.read_csv("../input/m5-forecasting-accuracy/calendar.csv")
         calendar = reduce_mem_usage(calendar)
@@ -154,7 +156,8 @@ class ReadAndTransformData(gokart.TaskOnKart):
         data = data[data["part"] != "test2"]
 
         data = pd.merge(data, calendar, how="left", left_on=["day"], right_on=["d"])
-        data.drop(["d", "day"], inplace=True, axis=1)
+        data.drop(["day"], inplace=True, axis=1)
+        data["d"] = data["d"].map(lambda x: int(x.split("_")[1]))
         # get the sell price data (this feature should be very important)
         sell_prices = pd.read_csv("../input/m5-forecasting-accuracy/sell_prices.csv")
         sell_prices = reduce_mem_usage(sell_prices)
