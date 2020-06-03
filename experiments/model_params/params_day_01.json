@@ -1,0 +1,15 @@
+{
+    "boosting_type": "gbdt",
+    "metric": "rmse",
+    "objective": "poisson",
+    "n_jobs": -1,
+    "seed": 110,
+    "learning_rate": 0.05,
+    "lambda_l1": 0.10064058547809944,
+    "lambda_l2": 1.3816435218001133,
+    "num_leaves": 31,
+    "feature_fraction": 1.0,
+    "bagging_fraction": 0.5559099623756953,
+    "bagging_freq": 2,
+    "min_child_samples": 5
+}

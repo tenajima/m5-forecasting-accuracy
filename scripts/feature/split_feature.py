@@ -5,7 +5,7 @@ from .get_feature import GetFeature
 
 END_TRAIN = 1913
 TEST_DAYS = 28
-TRAIN_DAYS = 100
+TRAIN_DAYS = 365
 
 
 class GetTrain(gokart.TaskOnKart):

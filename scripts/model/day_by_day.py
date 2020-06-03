@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import json
+from optuna.integration import lightgbm_tuner
 import pandas as pd
 import lightgbm as lgb
 import gokart
@@ -28,6 +30,7 @@ class TrainAndPredictOneDay(gokart.TaskOnKart):
         )
 
     def run(self):
+        tuning = False
         train = self.load_data_frame("train")
         valid = self.load_data_frame("valid")
         test = self.load_data_frame("test")
@@ -82,18 +85,35 @@ class TrainAndPredictOneDay(gokart.TaskOnKart):
             "event_type_2",
         ]
 
-        params = {
-            "boosting_type": "gbdt",
-            "metric": "rmse",
-            "objective": "poisson",
-            #         'objective': "tweedie",
-            "n_jobs": -1,
-            "seed": 110,
-            "learning_rate": 0.05,
-            "bagging_fraction": 0.75,
-            "bagging_freq": 10,
-            "colsample_bytree": 0.75,
-        }
+        if not tuning:
+            try:
+                params: dict = json.load(
+                    open(
+                        f"./model_params/params_day_{str(self.target_day).zfill(2)}.json"
+                    )
+                )
+            except FileNotFoundError as e:
+                print("not found tuned parameter!", e)
+                params = {
+                    "boosting_type": "gbdt",
+                    "metric": "rmse",
+                    "objective": "poisson",
+                    "n_jobs": -1,
+                    "seed": 110,
+                    "learning_rate": 0.05,
+                    "bagging_fraction": 0.75,
+                    "bagging_freq": 10,
+                    "colsample_bytree": 0.75,
+                }
+        else:
+            params = {
+                "boosting_type": "gbdt",
+                "metric": "rmse",
+                "objective": "poisson",
+                "n_jobs": -1,
+                "seed": 110,
+                "learning_rate": 0.05,
+            }
 
         if self.target_day < TEST_DAYS:  # 28日目のときはshift_columnsがないから
             feature_columns = train.columns
@@ -120,14 +140,32 @@ class TrainAndPredictOneDay(gokart.TaskOnKart):
         dataset_train = lgb.Dataset(train[use_columns], train[TARGET])
         dataset_valid = lgb.Dataset(valid[use_columns], valid[TARGET])
 
-        model = lgb.train(
-            params,
-            dataset_train,
-            num_boost_round=1000,
-            valid_sets=[dataset_train, dataset_valid],
-            early_stopping_rounds=200,
-            verbose_eval=100,
-        )
+        if tuning:
+            model = lightgbm_tuner.train(
+                params,
+                dataset_train,
+                num_boost_round=1000,
+                valid_sets=[dataset_train, dataset_valid],
+                early_stopping_rounds=200,
+                verbose_eval=100,
+            )
+            json.dump(
+                model.params,
+                open(
+                    f"./model_params/params_day_{str(self.target_day).zfill(2)}.json",
+                    "w",
+                ),
+                indent=4,
+            )
+        else:
+            model = lgb.train(
+                params,
+                dataset_train,
+                num_boost_round=1000,
+                valid_sets=[dataset_train, dataset_valid],
+                early_stopping_rounds=200,
+                verbose_eval=100,
+            )
 
         valid["pred"] = model.predict(valid[use_columns])
         test[TARGET] = model.predict(test[use_columns])
