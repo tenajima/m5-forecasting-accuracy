@@ -6,3 +6,4 @@ from scripts.model.day_by_day import TrainAndPredictAllDays, TrainAndPredictOneD
 if __name__ == "__main__":
     load_dotenv("env")
     luigi.build([TrainAndPredictAllDays()], local_scheduler=True)
+    # luigi.build([TrainAndPredictOneDay(target_day=28)], local_scheduler=True)
