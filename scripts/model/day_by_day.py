@@ -15,6 +15,7 @@ TARGET = "sales"
 class Result:
     valid: pd.DataFrame
     test: pd.DataFrame
+    importance: pd.DataFrame
 
 
 class TrainAndPredictOneDay(gokart.TaskOnKart):
@@ -71,6 +72,16 @@ class TrainAndPredictOneDay(gokart.TaskOnKart):
             "snap_WI",
             "wm_yr_wk",
             "dayofweek",
+            # "ratio_by_store_t7",
+            # "ratio_by_store_t30",
+            # "ratio_by_item_t7",
+            # "ratio_by_item_t30",
+            "is_weekend",
+            "is_US_holiday",
+            "before_day_off",
+            "after_day_off",
+            # "lag_sales_mul_lag_price_dev_price",
+            # "item_predict",
         ]
 
         id_columns = [
@@ -148,6 +159,7 @@ class TrainAndPredictOneDay(gokart.TaskOnKart):
                 valid_sets=[dataset_train, dataset_valid],
                 early_stopping_rounds=200,
                 verbose_eval=100,
+                time_budget=3600,
             )
             json.dump(
                 model.params,
@@ -170,7 +182,13 @@ class TrainAndPredictOneDay(gokart.TaskOnKart):
         valid["pred"] = model.predict(valid[use_columns])
         test[TARGET] = model.predict(test[use_columns])
 
-        result = Result(valid[["d", TARGET, "pred"]], test[["d", TARGET]])
+        importance = pd.DataFrame(
+            {
+                "feature_name": model.feature_name(),
+                "importance": model.feature_importance("gain"),
+            }
+        )
+        result = Result(valid[["d", TARGET, "pred"]], test[["d", TARGET]], importance)
 
         self.dump(result)
 

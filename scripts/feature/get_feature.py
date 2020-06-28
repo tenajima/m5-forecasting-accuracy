@@ -69,7 +69,11 @@ class GetFeature(gokart.TaskOnKart):
             "Origin",
             "SimpleTime",
             "SimpleLabelEncode",
-            # "Holiday",
+            # "SellRatioByStore",
+            # "SellRatioByItem",
+            "Holiday",
+            # "SalesMultipliedSellPriceDevideSellPrice",
+            # "ItemSalesPrediction",
         ]
         # もしpのfeaturesが空なら全部の特徴量を作る
         if not features:
@@ -220,6 +224,147 @@ class SimpleKernel(Feature):
         # sell_priceのNaN埋め
         data["sell_price"] = data["sell_price"].fillna(-999)
         data = self.set_index(data)
+        self.dump(data)
+
+
+class SellRatioByStore(Feature):
+    """
+    28日スライドして7日のrollingで得たmeanをもとにstoreごとの合計をとって、そのidがどれだけの割合を占めているかの特徴量
+    割り算はlgbが考慮できないので有用だと期待する
+    rolling_mean_t7でmeanをとってるけどsumを7で割ったものだし合計と考えて差し支えない
+    """
+
+    def requires(self):
+        return {"data": SimpleKernel()}
+
+    def run(self):
+        data = self.load("data")
+        data = data.reset_index()
+        data["store_id"] = data["id"].map(lambda x: "_".join(x.split("_")[3:5]))
+        data = data[["id", "d", "store_id", "rolling_mean_t7", "rolling_mean_t30"]]
+
+        data = data.merge(
+            data.groupby(["d", "store_id"], as_index=False)["rolling_mean_t7"]
+            .sum()
+            .rename(columns={"rolling_mean_t7": "store_sum_t7"}),
+            on=["d", "store_id"],
+        )
+        data = data.merge(
+            data.groupby(["d", "store_id"], as_index=False)["rolling_mean_t30"]
+            .sum()
+            .rename(columns={"rolling_mean_t30": "store_sum_t30"}),
+            on=["d", "store_id"],
+        )
+
+        data["ratio_by_store_t7"] = data["rolling_mean_t7"] / data["store_sum_t7"]
+        data["ratio_by_store_t30"] = data["rolling_mean_t30"] / data["store_sum_t30"]
+
+        data = data[["id", "d", "ratio_by_store_t7", "ratio_by_store_t30"]]
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class SellRatioByItem(Feature):
+    """
+    28日スライドして7日のrollingで得たmeanをもとにitemごとの合計をとって、そのidがどれだけの割合を占めているかの特徴量
+    割り算はlgbが考慮できないので有用だと期待する
+    rolling_mean_t7でmeanをとってるけどsumを7で割ったものだし合計と考えて差し支えない
+    """
+
+    def requires(self):
+        return {"data": SimpleKernel()}
+
+    def run(self):
+        data = self.load("data")
+        data = data.reset_index()
+        data["item_id"] = data["id"].map(lambda x: "_".join(x.split("_")[:3]))
+        data = data[["id", "d", "item_id", "rolling_mean_t7", "rolling_mean_t30"]]
+
+        data = data.merge(
+            data.groupby(["d", "item_id"], as_index=False)["rolling_mean_t7"]
+            .sum()
+            .rename(columns={"rolling_mean_t7": "item_sum_t7"}),
+            on=["d", "item_id"],
+        )
+        data = data.merge(
+            data.groupby(["d", "item_id"], as_index=False)["rolling_mean_t30"]
+            .sum()
+            .rename(columns={"rolling_mean_t30": "item_sum_t30"}),
+            on=["d", "item_id"],
+        )
+
+        data["ratio_by_item_t7"] = data["rolling_mean_t7"] / data["item_sum_t7"]
+        data["ratio_by_item_t30"] = data["rolling_mean_t30"] / data["item_sum_t30"]
+
+        data = data[["id", "d", "ratio_by_item_t7", "ratio_by_item_t30"]]
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class _SalesLag28(Feature):
+    """
+    28日前のsalesの特徴量
+    """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "sales", "d"]]
+
+        data["sales_lag"] = data.groupby(["id"])["sales"].transform(
+            lambda x: x.shift(28)
+        )
+        data = data[["id", "d", "sales_lag"]]
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class _SellPriceLag28(Feature):
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "sell_price", "d"]]
+
+        data["price_lag"] = data.groupby(["id"])["sell_price"].transform(
+            lambda x: x.shift(28)
+        )
+        data = data[["id", "d", "sell_price", "price_lag"]]
+        data = self.set_index(data)
+        self.dump(data)
+
+
+class SalesMultipliedSellPriceDevideSellPrice(gokart.TaskOnKart):
+    def requires(self):
+        return {"sales": _SalesLag28(), "price": _SellPriceLag28()}
+
+    def run(self):
+        data = self.load("sales")
+        price = self.load("price")
+
+        data = data.join(price)
+        del price
+
+        data["lag_sales_mul_lag_price_dev_price"] = (
+            data["sales_lag"] * data["price_lag"] / data["sell_price"]
+        )
+        data = data[["lag_sales_mul_lag_price_dev_price"]].fillna(-999)
+        self.dump(data)
+
+
+class ItemSalesPrediction(Feature):
+    """
+    日毎のitemの売上の予測
+    """
+
+    def run(self):
+        data = self.load("data")
+        data = data[["id", "d", "item_id"]]
+
+        predict = pd.read_pickle("./item_result_poisson.pkl")
+        data = data.merge(
+            predict.rename(columns={"sales": "item_predict"}),
+            on=["item_id", "d"],
+            how="left",
+        )
+        data = self.set_index(data[["id", "d", "item_predict"]])
         self.dump(data)
 
 
@@ -446,14 +591,15 @@ class HistoricalDemandAggByStateMonth(HistoricalDemandAggByItemMonth):
 class Holiday(Feature):
     def run(self):
         calendar = pd.read_csv(
-            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d"]
+            "../input/m5-forecasting-accuracy/calendar.csv", usecols=["d", "date"]
         )
+        calendar["d"] = calendar["d"].map(lambda x: int(x.split("_")[1]))
 
         # 前の日、休日が休日か見るために頭とお尻にくっつける
-        calendar.loc[calendar.shape[0]] = "2011-01-28"
-        calendar.loc[calendar.shape[0]] = "2016-06-20"
-        calendar = calendar.sort_values("d").reset_index(drop=True)
-        calendar["datetime"] = pd.to_datetime(calendar["d"])
+        calendar.loc[calendar.shape[0], "date"] = "2011-01-28"
+        calendar.loc[calendar.shape[0], "date"] = "2016-06-20"
+        calendar = calendar.sort_values("date").reset_index(drop=True)
+        calendar["datetime"] = pd.to_datetime(calendar["date"])
 
         calendar["dayofweek"] = calendar["datetime"].dt.dayofweek
         calendar["is_weekend"] = calendar["dayofweek"].isin([5, 6]).astype(int)
@@ -476,6 +622,16 @@ class Holiday(Feature):
 
         data = self.load("data")[["id", "d"]]
         data = data.merge(calendar, on="d")
+        data = data[
+            [
+                "id",
+                "d",
+                "is_weekend",
+                "is_US_holiday",
+                "before_day_off",
+                "after_day_off",
+            ]
+        ]
         data = self.set_index(data)
         self.dump(data)
 
