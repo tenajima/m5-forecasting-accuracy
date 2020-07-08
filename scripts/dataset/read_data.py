@@ -13,7 +13,7 @@ class ReadAndTransformData(gokart.TaskOnKart):
             self.nrows = None
 
         sales_train_validation = pd.read_csv(
-            "../input/m5-forecasting-accuracy/sales_train_validation.csv",
+            "../input/m5-forecasting-accuracy/sales_train_evaluation.csv",
             nrows=self.nrows,
         )
 
@@ -45,43 +45,43 @@ class ReadAndTransformData(gokart.TaskOnKart):
             "../input/m5-forecasting-accuracy/sample_submission.csv"
         )
         # seperate test dataframes
-        test1_rows = [row for row in submission["id"] if "validation" in row]
+        # test1_rows = [row for row in submission["id"] if "validation" in row]
         test2_rows = [row for row in submission["id"] if "evaluation" in row]
-        test1 = submission[submission["id"].isin(test1_rows)]
+        # test1 = submission[submission["id"].isin(test1_rows)]
         test2 = submission[submission["id"].isin(test2_rows)]
 
         # change column names
-        test1.columns = [
-            "id",
-            "d_1914",
-            "d_1915",
-            "d_1916",
-            "d_1917",
-            "d_1918",
-            "d_1919",
-            "d_1920",
-            "d_1921",
-            "d_1922",
-            "d_1923",
-            "d_1924",
-            "d_1925",
-            "d_1926",
-            "d_1927",
-            "d_1928",
-            "d_1929",
-            "d_1930",
-            "d_1931",
-            "d_1932",
-            "d_1933",
-            "d_1934",
-            "d_1935",
-            "d_1936",
-            "d_1937",
-            "d_1938",
-            "d_1939",
-            "d_1940",
-            "d_1941",
-        ]
+        # test1.columns = [
+        #     "id",
+        #     "d_1914",
+        #     "d_1915",
+        #     "d_1916",
+        #     "d_1917",
+        #     "d_1918",
+        #     "d_1919",
+        #     "d_1920",
+        #     "d_1921",
+        #     "d_1922",
+        #     "d_1923",
+        #     "d_1924",
+        #     "d_1925",
+        #     "d_1926",
+        #     "d_1927",
+        #     "d_1928",
+        #     "d_1929",
+        #     "d_1930",
+        #     "d_1931",
+        #     "d_1932",
+        #     "d_1933",
+        #     "d_1934",
+        #     "d_1935",
+        #     "d_1936",
+        #     "d_1937",
+        #     "d_1938",
+        #     "d_1939",
+        #     "d_1940",
+        #     "d_1941",
+        # ]
         test2.columns = [
             "id",
             "d_1942",
@@ -118,18 +118,18 @@ class ReadAndTransformData(gokart.TaskOnKart):
         ].drop_duplicates()
 
         # merge with product table
-        test2["id"] = test2["id"].str.replace("_evaluation", "_validation")
-        test1 = test1.merge(product, how="left", on="id")
+        # test2["id"] = test2["id"].str.replace("_evaluation", "_validation")
+        # test1 = test1.merge(product, how="left", on="id")
         test2 = test2.merge(product, how="left", on="id")
-        test2["id"] = test2["id"].str.replace("_validation", "_evaluation")
+        # test2["id"] = test2["id"].str.replace("_validation", "_evaluation")
 
         #
-        test1 = pd.melt(
-            test1,
-            id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],
-            var_name="day",
-            value_name="sales",
-        )
+        # test1 = pd.melt(
+        #     test1,
+        #     id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],
+        #     var_name="day",
+        #     value_name="sales",
+        # )
         test2 = pd.melt(
             test2,
             id_vars=["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"],
@@ -137,13 +137,14 @@ class ReadAndTransformData(gokart.TaskOnKart):
             value_name="sales",
         )
 
-        sales_train_validation["part"] = "train"
-        test1["part"] = "test1"
-        test2["part"] = "test2"
+        # sales_train_validation["part"] = "train"
+        # test1["part"] = "test1"
+        # test2["part"] = "test2"
 
-        data = pd.concat([sales_train_validation, test1, test2], axis=0)
+        # data = pd.concat([sales_train_validation, test1, test2], axis=0)
+        data = pd.concat([sales_train_validation, test2], axis=0)
 
-        del sales_train_validation, test1, test2
+        del sales_train_validation, test2
 
         data = data.loc[40500000:]
 
@@ -153,7 +154,7 @@ class ReadAndTransformData(gokart.TaskOnKart):
         calendar.drop(["weekday", "wday", "month", "year"], inplace=True, axis=1)
 
         # delete test2 for now
-        data = data[data["part"] != "test2"]
+        # data = data[data["part"] != "test2"]
 
         data = pd.merge(data, calendar, how="left", left_on=["day"], right_on=["d"])
         data.drop(["day"], inplace=True, axis=1)

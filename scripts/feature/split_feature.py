@@ -3,7 +3,7 @@ import gokart
 
 from .get_feature import GetFeature
 
-END_TRAIN = 1913
+END_TRAIN = 1941
 TEST_DAYS = 28
 TRAIN_DAYS = 365
 
